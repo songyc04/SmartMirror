@@ -63,10 +63,9 @@ void setup() {
   ens160.setOperatingMode(SFE_ENS160_STANDARD);
   ensStatus = ens160.getFlags();
 
-  // sendAT("AT", 5000);                                                               // ESP8266 상태 확인
-  // sendAT(String("AT+CWJAP=\"") + SSID + "\",\"" + PASSWORD + "\"", 5000);           // WIFI 연결 시도
-  // sendAT("AT+CIFSR", 15000);                                                        // IP 주소 확인
-  sendAT(String("AT+CIPSTART=\"TCP\",\"") + SERVER_IP + "\"," + SERVER_PORT, 5000); // 서버 접속 시도
+  sendAT("AT", 5000);                                                               // ESP8266 상태 확인
+  sendAT(String("AT+CWJAP=\"") + SSID + "\",\"" + PASSWORD + "\"", 5000);           // WIFI 연결 시도
+  sendAT("AT+CIFSR", 15000);                                                        // IP 주소 확인
   delay(2000);
   
   while (!ens160.checkDataStatus())
@@ -102,6 +101,7 @@ void loop() {
   {
     if (preState != state)  // OFF -> ON 이면 최초 센서값 전송해야함
     {
+      sendAT(String("AT+CIPSTART=\"TCP\",\"") + SERVER_IP + "\"," + SERVER_PORT, 5000); // 서버 접속 시도
       sendData(on, on.length());
       Serial.println("Power On.");
       getBrightness();
@@ -139,8 +139,11 @@ void loop() {
   {
     if (preState != state)
     {
+      
       Serial.println("OFF");
       sendData(off, off.length());
+      sendAT("AT+CIPCLOSE", 3000);
+      delay(1000);  // ← 종료 완료 대기
     }
     else
     {
@@ -178,8 +181,10 @@ void getAirCondition() {
   
   int tempAqi = ens160.getAQI();
 
+  Serial.println(String("TEMP:") + temperature + ",HUMI:" + humidity + ",AQI:" + aqi + ",BRI:" + brightness + "\n");
+
   // 온도가 40을 넘거나(불량일 경우 포함), 습도가 100을 넘거나, AQI가 0이거나, 온습도/공기질이 기존 값과 똑같다면 반환
-  if ((tempTemperature > 40) || (tempHumidity > 100) || (tempAqi == 0) || (tempTemperature == temperature) || (tempHumidity == humidity) || (tempAqi == aqi))
+  if (((int)tempTemperature == 255) || ((int)tempHumidity == 255) || (tempTemperature == temperature) || (tempHumidity == humidity))
   {
     Serial.println("TRUE");
     isDiff = false;
@@ -202,7 +207,7 @@ void getBrightness() {
 void sendAT(String cmd, int timeout) {
   String res = "";
 
-  if ((cmd == "AT") || (cmd.indexOf("AT+CWJAP") == 0) || (cmd == "AT+CIFSR") || (cmd == "AT+CIPSTART"))
+  if ((cmd == "AT") || (cmd.indexOf("AT+CWJAP") == 0) || (cmd == "AT+CIFSR") || (cmd == "AT+CIPSTART") || (cmd == "AT+CIPCLOSE"))
   {
     while (1)
     {
@@ -245,8 +250,6 @@ void sendAT(String cmd, int timeout) {
 void sendData(String cmd, int len) {
   // 전송 바이트 수
   sendAT("AT+CIPSEND=" + String(len), 3000);
-
-  
   Serial.println(">> " + cmd);
   // 데이터 전송
   espSerial.print(cmd);
