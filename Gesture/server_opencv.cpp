@@ -43,9 +43,8 @@ void printParsed(const std::string& data) {
 void opencv_gesture_worker() {
     std::cout << "[OpenCV 스레드] 제스처 감지 스레드가 시작되었습니다.\n";
 
-    // 젯슨 CSI 카메라용 GStreamer 파이프라인 (안될 경우 cv::VideoCapture cap(0)으로 변경 가능)
-    std::string pipeline = "nvarguscamerasrc ! video/x-raw(memory:NVMM), width=640, height=480, format=NV12, framerate=30/1 ! nvvidconv ! video/x-raw, format=BGRx ! videoconvert ! video/x-raw, format=BGR ! appsink";
-    cv::VideoCapture cap(pipeline, cv::CAP_GSTREAMER);
+ // 일반 USB 웹캠 주소(/dev/video0)로 직접 접근하여 비디오 캡처 객체 생성
+  cv::VideoCapture cap(0, cv::CAP_V4L2);
     
     if (!cap.isOpened()) {
         std::cerr << "[OpenCV 에러] 카메라를 열 수 없습니다. USB 웹캠 사용 시 인덱스 0으로 재시도합니다...\n";
