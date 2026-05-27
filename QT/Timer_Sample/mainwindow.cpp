@@ -14,6 +14,8 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    this->move(930, 110);
+
     // 1. UDP 소켓 생성 및 9001번 포트 바인딩
     udpSocket = new QUdpSocket(this);
     udpSocket->bind(QHostAddress::LocalHost, 9001);
