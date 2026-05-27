@@ -8,8 +8,6 @@
 #include <QHeaderView>
 #include <QTableWidgetItem>
 
-#include <QUrlQuery>
-
 #include <QGraphicsDropShadowEffect>
 
 #include <QDate>
@@ -19,6 +17,13 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    //--------------------------------
+    // Table Size
+    //--------------------------------
+
+    ui->tableForecast->setRowCount(3);
+    ui->tableForecast->setColumnCount(7);
 
     //--------------------------------
     // Network
@@ -116,11 +121,8 @@ MainWindow::MainWindow(QWidget *parent)
         ->setHorizontalScrollBarPolicy(
             Qt::ScrollBarAlwaysOff);
 
-    ui->tableForecast->viewport()
-        ->setAutoFillBackground(false);
-
     //--------------------------------
-    // Table Header
+    // Header
     //--------------------------------
 
     ui->tableForecast->horizontalHeader()
@@ -128,7 +130,33 @@ MainWindow::MainWindow(QWidget *parent)
             QHeaderView::Stretch);
 
     ui->tableForecast->horizontalHeader()
+        ->setFixedHeight(28);
+
+    ui->tableForecast->verticalHeader()
+        ->setDefaultSectionSize(40);
+
+    //--------------------------------
+    // Style
+    //--------------------------------
+
+    ui->tableForecast->setStyleSheet(
+        "QTableWidget {"
+        "background:transparent;"
+        "border:none;"
+        "font-size:16px;"
+        "color:#222;"
+        "}"
+        "QTableWidget::item {"
+        "border:none;"
+        "padding:4px;"
+        "}");
+
+    ui->tableForecast->horizontalHeader()
+                            ->setFixedHeight(28);
+
+    ui->tableForecast->horizontalHeader()
         ->setStyleSheet(
+
             "QHeaderView::section {"
             "background:transparent;"
             "border:none;"
@@ -148,29 +176,13 @@ MainWindow::MainWindow(QWidget *parent)
             "}");
 
     //--------------------------------
-    // Table Style
-    //--------------------------------
-
-    ui->tableForecast->setStyleSheet(
-        "QTableWidget {"
-        "background:transparent;"
-        "border:none;"
-        "font-size:16px;"
-        "color:#222;"
-        "}"
-        "QTableWidget::item {"
-        "border:none;"
-        "padding:10px;"
-        "}");
-
-    //--------------------------------
     // Row Height
     //--------------------------------
 
     for(int i = 0; i < 3; i++)
     {
         ui->tableForecast
-            ->setRowHeight(i, 32);
+            ->setRowHeight(i, 30);
     }
 
     //--------------------------------
@@ -202,31 +214,52 @@ MainWindow::~MainWindow()
 void MainWindow::requestWeather(
     QString city)
 {
-    QString apiKey =
-        "5658debc671e4dcba1e104756261905";
+    double lat = 37.5665;
+    double lon = 126.9780;
 
-    QUrl url(
-        "https://api.weatherapi.com/v1/forecast.json");
+    //--------------------------------
+    // City Coordinates
+    //--------------------------------
 
-    QUrlQuery query;
+    if(city == "Busan")
+    {
+        lat = 35.1796;
+        lon = 129.0756;
+    }
+    else if(city == "Tokyo")
+    {
+        lat = 35.6762;
+        lon = 139.6503;
+    }
+    else if(city == "London")
+    {
+        lat = 51.5072;
+        lon = -0.1276;
+    }
 
-    query.addQueryItem(
-        "key",
-        apiKey);
+    //--------------------------------
+    // Open-Meteo URL
+    //--------------------------------
 
-    query.addQueryItem(
-        "q",
-        city);
+    QString urlString =
+        QString(
+            "https://api.open-meteo.com/v1/forecast"
+            "?latitude=%1"
+            "&longitude=%2"
+            "&daily=weathercode,"
+            "temperature_2m_max,"
+            "temperature_2m_min"
+            "&current=temperature_2m,"
+            "apparent_temperature,"
+            "relative_humidity_2m,"
+            "wind_speed_10m,"
+            "weather_code"
+            "&timezone=Asia/Seoul"
+            "&forecast_days=7")
+            .arg(lat)
+            .arg(lon);
 
-    query.addQueryItem(
-        "days",
-        "7");
-
-    query.addQueryItem(
-        "lang",
-        "ko");
-
-    url.setQuery(query);
+    QUrl url(urlString);
 
     QNetworkRequest request(url);
 
@@ -256,35 +289,39 @@ void MainWindow::onWeatherReply(
         obj["current"].toObject();
 
     double temp =
-        current["temp_c"].toDouble();
+        current["temperature_2m"].toDouble();
 
     double feelsLike =
-        current["feelslike_c"].toDouble();
+        current["apparent_temperature"].toDouble();
 
     int humidity =
-        current["humidity"].toInt();
+        current["relative_humidity_2m"].toInt();
 
     double wind =
-        current["wind_kph"].toDouble();
+        current["wind_speed_10m"].toDouble();
 
-    QString weatherText =
-        current["condition"]
-            .toObject()["text"]
-            .toString();
+    int weatherCode =
+        current["weather_code"].toInt();
 
-    QString icon = "⛅";
+    QString weatherText = "맑음";
+    QString icon = "☀";
 
-    if(weatherText.contains("맑"))
-        icon = "☀";
-
-    else if(weatherText.contains("구름"))
+    if(weatherCode <= 3)
+    {
+        weatherText = "흐림";
         icon = "☁";
-
-    else if(weatherText.contains("비"))
+    }
+    else if(weatherCode >= 51 &&
+            weatherCode <= 67)
+    {
+        weatherText = "비";
         icon = "🌧";
-
-    else if(weatherText.contains("눈"))
+    }
+    else if(weatherCode >= 71)
+    {
+        weatherText = "눈";
         icon = "❄";
+    }
 
     ui->labelIcon->setText(icon);
 
@@ -296,33 +333,42 @@ void MainWindow::onWeatherReply(
         weatherText);
 
     ui->labelDetail->setText(
-        QString(
-            "체감 %1°   습도 %2%   풍속 %3 km/h")
-            .arg(feelsLike)
-            .arg(humidity)
-            .arg(wind));
+                QString(
+                    "체감 %1°   습도 %2%%   풍속 %3 km/h")
+                    .arg(feelsLike)
+                    .arg(humidity)
+                    .arg(wind)
+                );
 
     //--------------------------------
     // Location
     //--------------------------------
 
-    QString city =
-        obj["location"]
-            .toObject()["name"]
-            .toString();
-
     ui->labelLocation->setText(
-        "현재 위치 : "
-        + koreanCityName(city));
+        "현재 위치 : 서울");
 
     //--------------------------------
     // Forecast
     //--------------------------------
 
-    QJsonArray forecastday =
-        obj["forecast"]
-            .toObject()["forecastday"]
-            .toArray();
+    QJsonObject daily =
+        obj["daily"].toObject();
+
+    QJsonArray times =
+        daily["time"].toArray();
+
+    QJsonArray weathercodes =
+        daily["weathercode"].toArray();
+
+    QJsonArray maxTemps =
+        daily["temperature_2m_max"].toArray();
+
+    QJsonArray minTemps =
+        daily["temperature_2m_min"].toArray();
+
+    int days = times.size();
+
+    ui->tableForecast->setColumnCount(days);
 
     QStringList week =
     {
@@ -330,15 +376,14 @@ void MainWindow::onWeatherReply(
         "목","금","토"
     };
 
-    for(int i = 0;
-        i < forecastday.size();
-        i++)
+    for(int i = 0; i < days; i++)
     {
-        QJsonObject dayObj =
-            forecastday[i].toObject();
+        //--------------------------------
+        // Date
+        //--------------------------------
 
         QString date =
-            dayObj["date"].toString();
+            times[i].toString();
 
         QDate qdate =
             QDate::fromString(
@@ -348,41 +393,51 @@ void MainWindow::onWeatherReply(
         QString dayName =
             week[qdate.dayOfWeek() % 7];
 
+        QTableWidgetItem *headerItem =
+            new QTableWidgetItem(dayName);
+
+        headerItem->setTextAlignment(
+            Qt::AlignCenter);
+
+        headerItem->setForeground(
+            QColor("#333"));
+
         ui->tableForecast
             ->setHorizontalHeaderItem(
                 i,
-                new QTableWidgetItem(dayName));
-
-        QJsonObject day =
-            dayObj["day"].toObject();
-
-        QString weather =
-            day["condition"]
-                .toObject()["text"]
-                .toString();
-
-        QString dayIcon = "⛅";
-
-        if(weather.contains("맑"))
-            dayIcon = "☀";
-
-        else if(weather.contains("구름"))
-            dayIcon = "☁";
-
-        else if(weather.contains("비"))
-            dayIcon = "🌧";
-
-        else if(weather.contains("눈"))
-            dayIcon = "❄";
-
-        double maxTemp =
-            day["maxtemp_c"].toDouble();
-
-        double minTemp =
-            day["mintemp_c"].toDouble();
+                headerItem);
 
         //--------------------------------
-        // Icon
+        // Weather Code
+        //--------------------------------
+
+        int code =
+            weathercodes[i].toInt();
+
+        QString dayIcon = "☀";
+
+        if(code <= 3)
+            dayIcon = "☁";
+
+        else if(code >= 51 &&
+                code <= 67)
+            dayIcon = "🌧";
+
+        else if(code >= 71)
+            dayIcon = "❄";
+
+        //--------------------------------
+        // Temperatures
+        //--------------------------------
+
+        double maxTemp =
+            maxTemps[i].toDouble();
+
+        double minTemp =
+            minTemps[i].toDouble();
+
+        //--------------------------------
+        // Icon Item
         //--------------------------------
 
         QTableWidgetItem *iconItem =
@@ -454,9 +509,6 @@ QString MainWindow::koreanCityName(
 
     if(city == "London")
         return "런던";
-
-    if(city == "Paris")
-        return "파리";
 
     return city;
 }
