@@ -7,7 +7,6 @@
 // Pin define
 #define TX 4
 #define RX 5
-#define Touch_pin 7
 #define Echo_pin 8
 #define Trig_pin 9
 
@@ -37,8 +36,9 @@ String off = "OFF";
 const char* SSID = "abcd";                // WIFI SSID
 const char* PASSWORD = "abcdabcd";        // WIFI PASSWORD
 const char* SERVER_IP = "192.168.0.2";    // Jetson Nano Server IP
+// const char* SERVER_IP = "192.168.0.4";    // Test Server IP(Virtual Machine + Port Forwarding)
 const int SERVER_PORT = 9000;             // Server access PORT number
-const int SEND_INTERVAL = 2000;           // TCP send interval
+// const int SEND_INTERVAL = 2000;           // TCP send interval - Not use
 
 // Function declare
 void getAirCondition();                   // Get Humidity&Temperature by DHT11
@@ -51,21 +51,17 @@ void sendData(String cmd, int len);       // Data throw
 void setup() {
   Serial.begin(9600);         // Serial Monitor 
   espSerial.begin(9600);      // ESP8266 Serial
-  pinMode(Touch_pin, INPUT);  // Touch Sensor
   pinMode(Trig_pin, OUTPUT);  // Ultrasonic Sensor(throw)
   pinMode(Echo_pin, INPUT);   // Ultrasonic Sensor(receive)
-  // dht.begin();                // DHT11 begin
   aht.begin();                // AHT21 begin
   ens160.begin();             // ENS160 begin
   Wire.begin();               // Wire begin
-
-  int ensStatus;
   ens160.setOperatingMode(SFE_ENS160_STANDARD);
-  ensStatus = ens160.getFlags();
 
+  // 최초 Wifi 연결
   sendAT("AT", 5000);                                                               // ESP8266 상태 확인
   sendAT(String("AT+CWJAP=\"") + SSID + "\",\"" + PASSWORD + "\"", 5000);           // WIFI 연결 시도
-  sendAT("AT+CIFSR", 15000);                                                        // IP 주소 확인
+  sendAT("AT+CIFSR", 5000);                                                        // IP 주소 확인
   delay(2000);
   
   while (!ens160.checkDataStatus())
@@ -178,21 +174,25 @@ void getAirCondition() {
     Serial.println("Sensor ready to start...");
   }
 
-  
   int tempAqi = ens160.getAQI();
 
   Serial.println(String("TEMP:") + temperature + ",HUMI:" + humidity + ",AQI:" + aqi + ",BRI:" + brightness + "\n");
 
-  // 온도가 40을 넘거나(불량일 경우 포함), 습도가 100을 넘거나, AQI가 0이거나, 온습도/공기질이 기존 값과 똑같다면 반환
-  if (((int)tempTemperature == 255) || ((int)tempHumidity == 255) || (tempTemperature == temperature) || (tempHumidity == humidity))
+  // 온도나 습도가 255면(오류 상태) 보내면 안됨
+  if (((int)tempTemperature == 255) || ((int)tempHumidity == 255))
   {
-    Serial.println("TRUE");
     isDiff = false;
     return;
   }
+  // 온습도/AQI가 모두 이전 값과 똑같다면 보낼 필요 없음
+  else if ((tempTemperature == temperature) && (tempHumidity == humidity) && (tempAqi == aqi))
+  {
+    isDiff = false;
+    return;
+  }
+  // 온습도 값이 정상적이고, 온습도/AQI 중 하나라도 다르다면 값을 보냄
   else
   {
-    Serial.println("FALSE");
     temperature = tempTemperature;
     humidity = tempHumidity;
     aqi = tempAqi;
@@ -207,7 +207,7 @@ void getBrightness() {
 void sendAT(String cmd, int timeout) {
   String res = "";
 
-  if ((cmd == "AT") || (cmd.indexOf("AT+CWJAP") == 0) || (cmd == "AT+CIFSR") || (cmd == "AT+CIPSTART") || (cmd == "AT+CIPCLOSE"))
+  if ((cmd == "AT") || (cmd.indexOf("AT+CWJAP") == 0) || (cmd.indexOf("AT+CIPSTART") == 0) || (cmd == "AT+CIPCLOSE"))
   {
     while (1)
     {
@@ -223,11 +223,11 @@ void sendAT(String cmd, int timeout) {
         }
         if (res.indexOf("OK") != -1)
         {
-          Serial.println(res);
+          Serial.println("OK sign >> " + res);
           return;
         }
-        
       }
+      Serial.println(res);
     }
   }
   else
@@ -253,8 +253,4 @@ void sendData(String cmd, int len) {
   Serial.println(">> " + cmd);
   // 데이터 전송
   espSerial.print(cmd);
-
-  // 5. 연결 종료
-  // sendAT("AT+CIPCLOSE", 3000);
-  // delay(1000);  // ← 종료 완료 대기
 }
