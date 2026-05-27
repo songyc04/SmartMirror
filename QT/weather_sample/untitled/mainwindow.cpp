@@ -18,6 +18,8 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    this->move(900, 480);
+
     //--------------------------------
     // Table Size
     //--------------------------------
