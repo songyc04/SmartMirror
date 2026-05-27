@@ -8,11 +8,11 @@
 // =============================================
 GestureRecognizer::GestureRecognizer()
     : _sensitivity(1.0f)
-    , _cooldownMs(1200)    // 중복 인식 방지를 위해 쿨다운 시간을 0.8초 -> 1.2초로 상향
-    , _trajectorySize(15)  // 궤적 반응 속도를 높이기 위해 프레임 수 축소 (20 -> 15)
-    , _swipeThreshold(60.0f) // 스와이프 거리 진입 장벽 완화 (80 -> 60)
+    , _cooldownMs(1200)    // 스와이프 연속 발동 반응 속도를 위해 쿨다운 살짝 하향 (1500 -> 1200)
+    , _trajectorySize(8)   // [스와이프 패치 1] 빠른 인식을 위해 필요 프레임 축소 (15 -> 8)
+    , _swipeThreshold(45.0f) // [스와이프 패치 2] 미세한 움직임도 잡도록 임계값 하향 (60 -> 45)
     , _minHandArea(2500)   
-    , _maxHandArea(55000)  
+    , _maxHandArea(28000)  
     , _lastGesture(GestureType::NONE)
 {
     _bgSubtractor = cv::createBackgroundSubtractorMOG2(500, 50, false);
@@ -27,7 +27,7 @@ void GestureRecognizer::setGestureCallback(GestureCallback callback) {
 
 void GestureRecognizer::setSensitivity(float s) {
     _sensitivity = std::max(0.5f, std::min(2.0f, s));
-    _swipeThreshold = 60.0f / _sensitivity;
+    _swipeThreshold = 45.0f / _sensitivity;
 }
 
 void GestureRecognizer::setCooldown(int ms) {
@@ -40,7 +40,7 @@ void GestureRecognizer::setCooldown(int ms) {
 GestureType GestureRecognizer::processFrame(cv::Mat& frame) {
     GestureType detected = GestureType::NONE;
 
-    // 1. 손 감지
+    // 1. 손 감지 (얼굴 배제 포함)
     HandState state = detectHand(frame);
 
     // 2. 디버그 오버레이
@@ -57,26 +57,26 @@ GestureType GestureRecognizer::processFrame(cv::Mat& frame) {
     if ((int)_trajectory.size() > _trajectorySize)
         _trajectory.pop_front();
 
-    // ★ [수정 포인트 1] 글로벌 쿨다운 체크를 최상단으로 이동
-    // 제스처가 한 번 터진 후 쿨다운이 끝나지 않았다면 연산을 스킵하여 중복 입력을 원천 차단
+    // 쿨다운 체크
     if (!isCooldownExpired()) {
         _prevState = state;
         return GestureType::NONE;
     }
 
-    // 4. 손 포즈 감지 (펼치기/주먹)
-    detected = detectHandPose(state);
-
-    // 5. 스와이프 감지 (포즈가 NONE일 때만 궤적 분석)
-    if (detected == GestureType::NONE && _trajectory.size() >= 6) { 
+    // 4. 스와이프 감지 우선순위 상향 조정!
+    // 손이 이동 중일 때는 포즈보다 스와이프(상하좌우)를 먼저 체크하도록 흐름 제어
+    if (_trajectory.size() >= 4) { 
         detected = detectSwipe();
     }
 
+    // 5. 스와이프가 안 일어났을 때만 제자리 손 포즈(재생/정지) 분석
+    if (detected == GestureType::NONE) {
+        detected = detectHandPose(state);
+    }
+
     // 6. 콜백 발동 및 상태 유지
-    // ★ [수정 포인트 2] HAND_OPEN이나 FIST가 연속으로 중복 인식을 때리는 것 방지
     if (detected != GestureType::NONE) {
         if (detected == _lastGesture && (detected == GestureType::HAND_OPEN || detected == GestureType::HAND_FIST)) {
-            // 이미 재생 중이거나 정지 중이면 이벤트를 다시 발생시키지 않음
             _trajectory.clear();
             return GestureType::NONE;
         }
@@ -93,7 +93,7 @@ GestureType GestureRecognizer::processFrame(cv::Mat& frame) {
 }
 
 // =============================================
-//  손 감지 (얼굴 영역 무시 포함)
+//  손 감지
 // =============================================
 HandState GestureRecognizer::detectHand(cv::Mat& frame) {
     HandState state;
@@ -114,8 +114,8 @@ HandState GestureRecognizer::detectHand(cv::Mat& frame) {
     cv::morphologyEx(skinMask, skinMask, cv::MORPH_OPEN,  kernel);
     cv::morphologyEx(skinMask, skinMask, cv::MORPH_CLOSE, kernel);
 
-    // [얼굴 영역 무시] 상단 25% 커트
-    int ignoreHeight = frame.rows * 0.25;
+    // 얼굴 영역 확실하게 35% 커트
+    int ignoreHeight = frame.rows * 0.35;
     if(ignoreHeight > 0) {
         cv::rectangle(skinMask, cv::Rect(0, 0, frame.cols, ignoreHeight), cv::Scalar(0), -1);
     }
@@ -140,7 +140,7 @@ HandState GestureRecognizer::detectHand(cv::Mat& frame) {
 
         cv::Rect bRect = cv::boundingRect(contour);
         float aspectRatio = (float)bRect.width / bRect.height;
-        if (aspectRatio < 0.3f || aspectRatio > 3.0f) continue; // 비율 마진 확대
+        if (aspectRatio < 0.3f || aspectRatio > 3.0f) continue; 
 
         cv::Moments M = cv::moments(contour);
         if (M.m00 == 0) continue;
@@ -209,7 +209,7 @@ int GestureRecognizer::countFingers(const HandState& state, const cv::Mat& mask)
         if (a * b == 0) continue;
         float angle = std::acos((a*a + b*b - c*c) / (2*a*b));
 
-        if (angle < CV_PI / 2.0f) { // 각도 제한 소폭 완화
+        if (angle < CV_PI / 2.0f) { 
             fingers++;
         }
     }
@@ -218,105 +218,14 @@ int GestureRecognizer::countFingers(const HandState& state, const cv::Mat& mask)
 }
 
 // =============================================
-//  ★ 개조된 스와이프 감지 (상하좌우 밸런스 패치) ★
+//  ★ 개조된 스와이프 감지 (360도 수학적 방사형 분할) ★
 // =============================================
 GestureType GestureRecognizer::detectSwipe() {
-    if (_trajectory.size() < 5) return GestureType::NONE;
+    if (_trajectory.size() < 4) return GestureType::NONE;
 
     cv::Point2f start = _trajectory.front();
     cv::Point2f end   = _trajectory.back();
 
     float dx = end.x - start.x;
     float dy = end.y - start.y;
-    float dist = std::sqrt(dx*dx + dy*dy);
-
-    // 최소 이동 거리 미달 시 기각
-    if (dist < _swipeThreshold) return GestureType::NONE;
-
-    // ★ [수정 포인트 3] 타이트한 비율 조건(1.5배)을 없애고 
-    // 절대값 크기 비교 및 부드러운 가중치(1.1배)로 모든 방향이 고르게 인식되도록 수정
-    if (std::abs(dx) > std::abs(dy) * 1.1f) {
-        // 좌우 우세
-        return (dx < 0) ? GestureType::SWIPE_LEFT : GestureType::SWIPE_RIGHT;
-    } 
-    else if (std::abs(dy) > std::abs(dx) * 1.1f) {
-        // 상하 우세
-        return (dy < 0) ? GestureType::SWIPE_UP : GestureType::SWIPE_DOWN;
-    }
-
-    return GestureType::NONE;
-}
-
-// =============================================
-//  손 포즈 감지
-// =============================================
-GestureType GestureRecognizer::detectHandPose(const HandState& state) {
-    if (state.fingerCount >= 4) {
-        return GestureType::HAND_OPEN;
-    }
-    else if (state.fingerCount == 0) {
-        std::vector<cv::Point> hull;
-        cv::convexHull(state.contour, hull);
-        float hullArea = (float)cv::contourArea(hull);
-        float ratio    = state.area / (hullArea + 1e-6f);
-
-        if (ratio > 0.70f) // 주먹 인식 감도 향상 (0.75 -> 0.70)
-            return GestureType::HAND_FIST;
-    }
-
-    return GestureType::NONE;
-}
-
-// =============================================
-//  디버그 오버레이 및 유틸
-// =============================================
-void GestureRecognizer::drawDebugOverlay(cv::Mat& frame, const HandState& state) {
-    cv::Mat overlay = frame.clone();
-    cv::rectangle(overlay, cv::Rect(0, 0, frame.cols, 50), cv::Scalar(0, 0, 0), -1);
-    
-    int ignoreHeight = frame.rows * 0.25;
-    cv::line(frame, cv::Point(0, ignoreHeight), cv::Point(frame.cols, ignoreHeight), cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
-
-    cv::addWeighted(overlay, 0.5, frame, 0.5, 0, frame);
-
-    std::string label = "Gesture: " + gestureToString(_lastGesture);
-    cv::putText(frame, label, cv::Point(10, 33), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 120), 2);
-
-    if (!state.isDetected) return;
-
-    std::vector<std::vector<cv::Point>> contours = {state.contour};
-    cv::drawContours(frame, contours, 0, cv::Scalar(0, 255, 0), 2);
-    cv::circle(frame, state.center, 8, cv::Scalar(0, 120, 255), -1);
-
-    std::string fingerLabel = "Fingers: " + std::to_string(state.fingerCount);
-    cv::putText(frame, fingerLabel, cv::Point((int)state.center.x + 10, (int)state.center.y - 10),
-                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 255, 0), 2);
-
-    for (int i = 1; i < (int)_trajectory.size(); i++) {
-        float alpha = (float)i / _trajectory.size();
-        cv::Scalar color(0, (int)(255 * alpha), (int)(255 * (1 - alpha)));
-        cv::line(frame, _trajectory[i-1], _trajectory[i], color, 3);
-    }
-}
-
-bool GestureRecognizer::isCooldownExpired() {
-    auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastGestureTime).count();
-    return elapsed >= _cooldownMs;
-}
-
-void GestureRecognizer::resetCooldown() {
-    _lastGestureTime = std::chrono::steady_clock::now();
-}
-
-std::string GestureRecognizer::gestureToString(GestureType g) {
-    switch (g) {
-        case GestureType::SWIPE_LEFT:  return "SWIPE LEFT  (다음 화면)";
-        case GestureType::SWIPE_RIGHT: return "SWIPE RIGHT (이전 화면)";
-        case GestureType::SWIPE_UP:    return "SWIPE UP    (볼륨 증가)";
-        case GestureType::SWIPE_DOWN:  return "SWIPE DOWN  (볼륨 감소)";
-        case GestureType::HAND_OPEN:   return "HAND OPEN   (재생)";
-        case GestureType::HAND_FIST:   return "HAND FIST   (정지)";
-        default:                       return "NONE";
-    }
-}
+    float dist = std::sqrt(dx*
