@@ -37,8 +37,7 @@ const char* SSID = "abcd";                // WIFI SSID
 const char* PASSWORD = "abcdabcd";        // WIFI PASSWORD
 const char* SERVER_IP = "192.168.0.2";    // Jetson Nano Server IP
 // const char* SERVER_IP = "192.168.0.4";    // Test Server IP(Virtual Machine + Port Forwarding)
-const int SERVER_PORT = 9000;             // Server access PORT number
-// const int SEND_INTERVAL = 2000;           // TCP send interval - Not use
+const int SERVER_PORT = 9000;             // Server access PORT number\
 
 // Function declare
 void getAirCondition();                   // Get Humidity&Temperature by DHT11
@@ -46,7 +45,6 @@ void getDistance();                       // Get distance of stuff
 void getBrightness();                     // Get brightness of room
 void sendAT(String cmd, int timeout);     // ESP8266 Control
 void sendData(String cmd, int len);       // Data throw
-
 
 void setup() {
   Serial.begin(9600);         // Serial Monitor 
@@ -149,8 +147,6 @@ void loop() {
   }
   preState = state;
 }
-
-
 
 void getDistance() {
   digitalWrite(Trig_pin, LOW);
