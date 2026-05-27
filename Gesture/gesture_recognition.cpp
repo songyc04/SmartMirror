@@ -228,4 +228,105 @@ GestureType GestureRecognizer::detectSwipe() {
 
     float dx = end.x - start.x;
     float dy = end.y - start.y;
-    float dist = std::sqrt(dx*
+    float dist = std::sqrt(dx*dx + dy*dy);
+
+    // 최소 통과 이동거리 체크
+    if (dist < _swipeThreshold) return GestureType::NONE;
+
+    // [스와이프 패치 3] 아크탄젠트(atan2) 함수를 통해 정확한 이동 벡터의 각도를 구합니다.
+    // 결과값은 라디안 단위로 -PI ~ +PI 범위로 나옵니다.
+    float angle = std::atan2(dy, dx); 
+    float degree = angle * 180.0f / CV_PI; // 사람이 보기 편하게 디그리 변환 (-180 ~ 180도)
+
+    // 각도 범위를 이용해 상하좌우 구역을 각 90도씩 칼같이 배분합니다.
+    if (degree >= -45.0f && degree < 45.0f) {
+        return GestureType::SWIPE_RIGHT; // 우측 구역 (-45도 ~ 45도)
+    } 
+    else if (degree >= 45.0f && degree < 135.0f) {
+        return GestureType::SWIPE_DOWN;  // 아래 구역 (45도 ~ 135도)
+    } 
+    else if (degree >= -135.0f && degree < -45.0f) {
+        return GestureType::SWIPE_UP;    // 위쪽 구역 (-135도 ~ -45도)
+    } 
+    else {
+        return GestureType::SWIPE_LEFT;  // 좌측 구역 (135도~180도 및 -180도~-135도)
+    }
+
+    return GestureType::NONE;
+}
+
+// =============================================
+//  손 포즈 감지
+// =============================================
+GestureType GestureRecognizer::detectHandPose(const HandState& state) {
+    if (state.fingerCount >= 4) {
+        return GestureType::HAND_OPEN;
+    }
+    else if (state.fingerCount == 0) {
+        std::vector<cv::Point> hull;
+        cv::convexHull(state.contour, hull);
+        float hullArea = (float)cv::contourArea(hull);
+        float ratio    = state.area / (hullArea + 1e-6f);
+
+        // 얼굴 오인식 완전 무시 크기 조건 결합
+        if (ratio > 0.70f && state.area < 16000) {
+            return GestureType::HAND_FIST;
+        }
+    }
+
+    return GestureType::NONE;
+}
+
+// =============================================
+//  디버그 오버레이
+// =============================================
+void GestureRecognizer::drawDebugOverlay(cv::Mat& frame, const HandState& state) {
+    cv::Mat overlay = frame.clone();
+    cv::rectangle(overlay, cv::Rect(0, 0, frame.cols, 50), cv::Scalar(0, 0, 0), -1);
+    
+    int ignoreHeight = frame.rows * 0.35;
+    cv::line(frame, cv::Point(0, ignoreHeight), cv::Point(frame.cols, ignoreHeight), cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+
+    cv::addWeighted(overlay, 0.5, frame, 0.5, 0, frame);
+
+    std::string label = "Gesture: " + gestureToString(_lastGesture);
+    cv::putText(frame, label, cv::Point(10, 33), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 120), 2);
+
+    if (!state.isDetected) return;
+
+    std::vector<std::vector<cv::Point>> contours = {state.contour};
+    cv::drawContours(frame, contours, 0, cv::Scalar(0, 255, 0), 2);
+    cv::circle(frame, state.center, 8, cv::Scalar(0, 120, 255), -1);
+
+    std::string infoLabel = "Fingers: " + std::to_string(state.fingerCount) + " | Area: " + std::to_string((int)state.area);
+    cv::putText(frame, infoLabel, cv::Point((int)state.center.x + 10, (int)state.center.y - 10),
+                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 0), 1, cv::LINE_AA);
+
+    for (int i = 1; i < (int)_trajectory.size(); i++) {
+        float alpha = (float)i / _trajectory.size();
+        cv::Scalar color(0, (int)(255 * alpha), (int)(255 * (1 - alpha)));
+        cv::line(frame, _trajectory[i-1], _trajectory[i], color, 3);
+    }
+}
+
+bool GestureRecognizer::isCooldownExpired() {
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastGestureTime).count();
+    return elapsed >= _cooldownMs;
+}
+
+void GestureRecognizer::resetCooldown() {
+    _lastGestureTime = std::chrono::steady_clock::now();
+}
+
+std::string GestureRecognizer::gestureToString(GestureType g) {
+    switch (g) {
+        case GestureType::SWIPE_LEFT:  return "SWIPE LEFT  (다음 화면)";
+        case GestureType::SWIPE_RIGHT: return "SWIPE RIGHT (이전 화면)";
+        case GestureType::SWIPE_UP:    return "SWIPE UP    (볼륨 증가)";
+        case GestureType::SWIPE_DOWN:  return "SWIPE DOWN  (볼륨 감소)";
+        case GestureType::HAND_OPEN:   return "HAND OPEN   (재생)";
+        case GestureType::HAND_FIST:   return "HAND FIST   (정지)";
+        default:                       return "NONE";
+    }
+}
