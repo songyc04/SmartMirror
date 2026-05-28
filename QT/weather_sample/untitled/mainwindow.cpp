@@ -18,14 +18,30 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    this->move(900, 480);
+    this->move(1000, 600);
+
+    this->setFixedSize(950,560);
 
     //--------------------------------
     // Table Size
     //--------------------------------
 
     ui->tableForecast->setRowCount(3);
-    ui->tableForecast->setColumnCount(7);
+    ui->tableForecast->setColumnCount(8);
+
+    //--------------------------------
+    // Hide Vertical Header
+    //--------------------------------
+
+    ui->tableForecast->verticalHeader()
+        ->setVisible(false);
+
+    //--------------------------------
+    // First Column Width
+    //--------------------------------
+
+    ui->tableForecast
+        ->setColumnWidth(0, 70);
 
     //--------------------------------
     // Network
@@ -56,25 +72,25 @@ MainWindow::MainWindow(QWidget *parent)
     //--------------------------------
 
     ui->labelLocation->setStyleSheet(
-        "font-size:18px;"
+        "font-size:24px;"
         "font-weight:bold;"
         "color:#333;");
 
     ui->labelIcon->setStyleSheet(
-        "font-size:48px;");
+        "font-size:78px;");
 
     ui->labelTemp->setStyleSheet(
-        "font-size:42px;"
+        "font-size:58px;"
         "font-weight:bold;"
         "color:#111;");
 
     ui->labelWeather->setStyleSheet(
-        "font-size:22px;"
-        "color:#222;");
+        "font-size:32px;"
+        "color:#333;");
 
     ui->labelDetail->setStyleSheet(
-        "font-size:15px;"
-        "color:#333;");
+        "font-size:18px;"
+        "color:#444;");
 
     //--------------------------------
     // Forecast Card
@@ -132,10 +148,7 @@ MainWindow::MainWindow(QWidget *parent)
             QHeaderView::Stretch);
 
     ui->tableForecast->horizontalHeader()
-        ->setFixedHeight(28);
-
-    ui->tableForecast->verticalHeader()
-        ->setDefaultSectionSize(40);
+        ->setFixedHeight(32);
 
     //--------------------------------
     // Style
@@ -145,16 +158,13 @@ MainWindow::MainWindow(QWidget *parent)
         "QTableWidget {"
         "background:transparent;"
         "border:none;"
-        "font-size:16px;"
+        "font-size:20px;"
         "color:#222;"
         "}"
         "QTableWidget::item {"
         "border:none;"
         "padding:4px;"
         "}");
-
-    ui->tableForecast->horizontalHeader()
-                            ->setFixedHeight(28);
 
     ui->tableForecast->horizontalHeader()
         ->setStyleSheet(
@@ -167,16 +177,6 @@ MainWindow::MainWindow(QWidget *parent)
             "color:#333;"
             "}");
 
-    ui->tableForecast->verticalHeader()
-        ->setStyleSheet(
-            "QHeaderView::section {"
-            "background:transparent;"
-            "border:none;"
-            "font-size:15px;"
-            "font-weight:bold;"
-            "color:#444;"
-            "}");
-
     //--------------------------------
     // Row Height
     //--------------------------------
@@ -184,22 +184,8 @@ MainWindow::MainWindow(QWidget *parent)
     for(int i = 0; i < 3; i++)
     {
         ui->tableForecast
-            ->setRowHeight(i, 30);
+            ->setRowHeight(i, 36);
     }
-
-    //--------------------------------
-    // Row Labels
-    //--------------------------------
-
-    QStringList rowLabels;
-
-    rowLabels << "날씨"
-              << "최고"
-              << "최저";
-
-    ui->tableForecast
-        ->setVerticalHeaderLabels(
-            rowLabels);
 
     //--------------------------------
     // Start City
@@ -370,7 +356,54 @@ void MainWindow::onWeatherReply(
 
     int days = times.size();
 
-    ui->tableForecast->setColumnCount(days);
+    //--------------------------------
+    // Empty Header
+    //--------------------------------
+
+    ui->tableForecast
+        ->setHorizontalHeaderItem(
+            0,
+            new QTableWidgetItem(""));
+
+    //--------------------------------
+    // Left Labels
+    //--------------------------------
+
+    QTableWidgetItem *weatherLabel =
+        new QTableWidgetItem("날씨");
+
+    weatherLabel->setTextAlignment(
+        Qt::AlignCenter);
+
+    weatherLabel->setForeground(
+        QColor("#444"));
+
+    ui->tableForecast->setItem(
+        0, 0, weatherLabel);
+
+    QTableWidgetItem *maxLabel =
+        new QTableWidgetItem("최고");
+
+    maxLabel->setTextAlignment(
+        Qt::AlignCenter);
+
+    maxLabel->setForeground(
+        QColor("#444"));
+
+    ui->tableForecast->setItem(
+        1, 0, maxLabel);
+
+    QTableWidgetItem *minLabel =
+        new QTableWidgetItem("최저");
+
+    minLabel->setTextAlignment(
+        Qt::AlignCenter);
+
+    minLabel->setForeground(
+        QColor("#444"));
+
+    ui->tableForecast->setItem(
+        2, 0, minLabel);
 
     QStringList week =
     {
@@ -406,7 +439,7 @@ void MainWindow::onWeatherReply(
 
         ui->tableForecast
             ->setHorizontalHeaderItem(
-                i,
+                i + 1,
                 headerItem);
 
         //--------------------------------
@@ -450,7 +483,7 @@ void MainWindow::onWeatherReply(
 
         ui->tableForecast->setItem(
             0,
-            i,
+            i + 1,
             iconItem);
 
         //--------------------------------
@@ -470,7 +503,7 @@ void MainWindow::onWeatherReply(
 
         ui->tableForecast->setItem(
             1,
-            i,
+            i + 1,
             maxItem);
 
         //--------------------------------
@@ -490,7 +523,7 @@ void MainWindow::onWeatherReply(
 
         ui->tableForecast->setItem(
             2,
-            i,
+            i + 1,
             minItem);
     }
 
