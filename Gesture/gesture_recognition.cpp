@@ -8,11 +8,11 @@
 // =============================================
 GestureRecognizer::GestureRecognizer()
     : _sensitivity(1.0f)
-    , _cooldownMs(1200)    // 스와이프 연속 발동 반응 속도를 위해 쿨다운 살짝 하향 (1500 -> 1200)
-    , _trajectorySize(8)   // [스와이프 패치 1] 빠른 인식을 위해 필요 프레임 축소 (15 -> 8)
-    , _swipeThreshold(45.0f) // [스와이프 패치 2] 미세한 움직임도 잡도록 임계값 하향 (60 -> 45)
+    , _cooldownMs(600)      
+    , _trajectorySize(12)   
+    , _swipeThreshold(80.0f) 
     , _minHandArea(2500)   
-    , _maxHandArea(28000)  
+    , _maxHandArea(70000)   
     , _lastGesture(GestureType::NONE)
 {
     _bgSubtractor = cv::createBackgroundSubtractorMOG2(500, 50, false);
@@ -27,7 +27,7 @@ void GestureRecognizer::setGestureCallback(GestureCallback callback) {
 
 void GestureRecognizer::setSensitivity(float s) {
     _sensitivity = std::max(0.5f, std::min(2.0f, s));
-    _swipeThreshold = 45.0f / _sensitivity;
+    _swipeThreshold = 40.0f / _sensitivity;
 }
 
 void GestureRecognizer::setCooldown(int ms) {
@@ -40,7 +40,7 @@ void GestureRecognizer::setCooldown(int ms) {
 GestureType GestureRecognizer::processFrame(cv::Mat& frame) {
     GestureType detected = GestureType::NONE;
 
-    // 1. 손 감지 (얼굴 배제 포함)
+    // 1. 손 감지 (이제 상단 제한이 없습니다)
     HandState state = detectHand(frame);
 
     // 2. 디버그 오버레이
@@ -63,29 +63,38 @@ GestureType GestureRecognizer::processFrame(cv::Mat& frame) {
         return GestureType::NONE;
     }
 
-    // 4. 스와이프 감지 우선순위 상향 조정!
-    // 손이 이동 중일 때는 포즈보다 스와이프(상하좌우)를 먼저 체크하도록 흐름 제어
+    // 4. 움직임이 발생하는지 먼저 체크 (상하좌우 스와이프 판단 우선)
     if (_trajectory.size() >= 4) { 
         detected = detectSwipe();
     }
 
-    // 5. 스와이프가 안 일어났을 때만 제자리 손 포즈(재생/정지) 분석
+    // 5. 손이 멈춰있거나 스와이프가 아니라면 정적인 포즈(재생/정지) 분석
     if (detected == GestureType::NONE) {
         detected = detectHandPose(state);
     }
 
-    // 6. 콜백 발동 및 상태 유지
+    // 6. 제스처 발동 조건 검증
     if (detected != GestureType::NONE) {
+        // [중복 인식 철저 차단 잠금장치]
+        // 현재 감지된 제스처가 직전에 성공한 제스처(HAND_OPEN 또는 HAND_FIST)와 동일하다면 
+        // 손을 계속 펴고/쥐고 있는 상태이므로 무시하고 이벤트를 발생시키지 않습니다.
         if (detected == _lastGesture && (detected == GestureType::HAND_OPEN || detected == GestureType::HAND_FIST)) {
-            _trajectory.clear();
-            return GestureType::NONE;
+            return GestureType::NONE; 
         }
 
         resetCooldown();
         _lastGesture = detected;
-        _trajectory.clear();
+        _trajectory.clear(); // 제스처 성공 시 궤적 리셋
+        
         if (_callback) _callback(detected, 1.0f);
         std::cout << "[Gesture 발동] " << gestureToString(detected) << std::endl;
+    } 
+    else {
+        // 손가락 수의 변화가 생기거나 손을 움직이기 시작하면 포즈 중복 잠금을 해제하기 위해
+        // 현재 상태가 확실히 주먹이나 보가 아닐 때만 _lastGesture를 NONE으로 풀어줍니다.
+        if (state.fingerCount > 0 && state.fingerCount < 4) {
+            _lastGesture = GestureType::NONE;
+        }
     }
 
     _prevState = state;
@@ -93,7 +102,7 @@ GestureType GestureRecognizer::processFrame(cv::Mat& frame) {
 }
 
 // =============================================
-//  손 감지
+//  손 감지 (일정 이상 올라가면 안 되던 제한 완벽 삭제)
 // =============================================
 HandState GestureRecognizer::detectHand(cv::Mat& frame) {
     HandState state;
@@ -114,17 +123,12 @@ HandState GestureRecognizer::detectHand(cv::Mat& frame) {
     cv::morphologyEx(skinMask, skinMask, cv::MORPH_OPEN,  kernel);
     cv::morphologyEx(skinMask, skinMask, cv::MORPH_CLOSE, kernel);
 
-    // 얼굴 영역 확실하게 35% 커트
-    int ignoreHeight = frame.rows * 0.35;
-    if(ignoreHeight > 0) {
-        cv::rectangle(skinMask, cv::Rect(0, 0, frame.cols, ignoreHeight), cv::Scalar(0), -1);
-    }
-
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(skinMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
     if (contours.empty()) return state;
 
+    // 가장 큰 윤곽선 순으로 정렬
     std::sort(contours.begin(), contours.end(), [](const std::vector<cv::Point>& a, const std::vector<cv::Point>& b) {
         return cv::contourArea(a) > cv::contourArea(b);
     });
@@ -140,7 +144,7 @@ HandState GestureRecognizer::detectHand(cv::Mat& frame) {
 
         cv::Rect bRect = cv::boundingRect(contour);
         float aspectRatio = (float)bRect.width / bRect.height;
-        if (aspectRatio < 0.3f || aspectRatio > 3.0f) continue; 
+        if (aspectRatio < 0.25f || aspectRatio > 3.5f) continue; 
 
         cv::Moments M = cv::moments(contour);
         if (M.m00 == 0) continue;
@@ -152,18 +156,12 @@ HandState GestureRecognizer::detectHand(cv::Mat& frame) {
         tempState.center = center;
         int fingers = countFingers(tempState, skinMask);
 
-        if (bestHandContour.empty()) {
-            bestHandContour = contour;
-            bestArea = area;
-            bestFingerCount = fingers;
-            bestCenter = center;
-        } else if (fingers > 0 && center.y > bestCenter.y) {
-            bestHandContour = contour;
-            bestArea = area;
-            bestFingerCount = fingers;
-            bestCenter = center;
-            break; 
-        }
+        // 가장 신뢰도 높은 첫 번째 유효 덩어리를 손으로 채택
+        bestHandContour = contour;
+        bestArea = area;
+        bestFingerCount = fingers;
+        bestCenter = center;
+        break;
     }
 
     if (bestHandContour.empty()) return state;
@@ -200,7 +198,7 @@ int GestureRecognizer::countFingers(const HandState& state, const cv::Mat& mask)
         cv::Point far    = state.contour[d[2]];
         float depth      = d[3] / 256.0f;
 
-        if (depth < handRadius * 0.20f || depth > handRadius * 1.3f) continue;
+        if (depth < handRadius * 0.18f || depth > handRadius * 1.4f) continue;
 
         float a = cv::norm(end - far);
         float b = cv::norm(start - far);
@@ -218,7 +216,7 @@ int GestureRecognizer::countFingers(const HandState& state, const cv::Mat& mask)
 }
 
 // =============================================
-//  ★ 개조된 스와이프 감지 (360도 수학적 방사형 분할) ★
+//  스와이프 감지 (각도 판정 기반 4방향 균형 분할)
 // =============================================
 GestureType GestureRecognizer::detectSwipe() {
     if (_trajectory.size() < 4) return GestureType::NONE;
@@ -230,26 +228,25 @@ GestureType GestureRecognizer::detectSwipe() {
     float dy = end.y - start.y;
     float dist = std::sqrt(dx*dx + dy*dy);
 
-    // 최소 통과 이동거리 체크
+    // 최소 이동거리 기준 만족 여부
     if (dist < _swipeThreshold) return GestureType::NONE;
 
-    // [스와이프 패치 3] 아크탄젠트(atan2) 함수를 통해 정확한 이동 벡터의 각도를 구합니다.
-    // 결과값은 라디안 단위로 -PI ~ +PI 범위로 나옵니다.
+    // 움직임 벡터 각도 계산 (-180 ~ +180도)
     float angle = std::atan2(dy, dx); 
-    float degree = angle * 180.0f / CV_PI; // 사람이 보기 편하게 디그리 변환 (-180 ~ 180도)
+    float degree = angle * 180.0f / CV_PI;
 
-    // 각도 범위를 이용해 상하좌우 구역을 각 90도씩 칼같이 배분합니다.
+    // 사방 90도 영역 정확한 라디안 분할 판정
     if (degree >= -45.0f && degree < 45.0f) {
-        return GestureType::SWIPE_RIGHT; // 우측 구역 (-45도 ~ 45도)
+        return GestureType::SWIPE_RIGHT; 
     } 
     else if (degree >= 45.0f && degree < 135.0f) {
-        return GestureType::SWIPE_DOWN;  // 아래 구역 (45도 ~ 135도)
+        return GestureType::SWIPE_DOWN;  
     } 
     else if (degree >= -135.0f && degree < -45.0f) {
-        return GestureType::SWIPE_UP;    // 위쪽 구역 (-135도 ~ -45도)
+        return GestureType::SWIPE_UP;    
     } 
     else {
-        return GestureType::SWIPE_LEFT;  // 좌측 구역 (135도~180도 및 -180도~-135도)
+        return GestureType::SWIPE_LEFT;  
     }
 
     return GestureType::NONE;
@@ -268,8 +265,7 @@ GestureType GestureRecognizer::detectHandPose(const HandState& state) {
         float hullArea = (float)cv::contourArea(hull);
         float ratio    = state.area / (hullArea + 1e-6f);
 
-        // 얼굴 오인식 완전 무시 크기 조건 결합
-        if (ratio > 0.70f && state.area < 16000) {
+        if (ratio > 0.72f) {
             return GestureType::HAND_FIST;
         }
     }
@@ -278,22 +274,22 @@ GestureType GestureRecognizer::detectHandPose(const HandState& state) {
 }
 
 // =============================================
-//  디버그 오버레이
+//  디버그 오버레이 (★ green 오타 완전 해결 파트)
 // =============================================
 void GestureRecognizer::drawDebugOverlay(cv::Mat& frame, const HandState& state) {
     cv::Mat overlay = frame.clone();
     cv::rectangle(overlay, cv::Rect(0, 0, frame.cols, 50), cv::Scalar(0, 0, 0), -1);
-    
-    int ignoreHeight = frame.rows * 0.35;
-    cv::line(frame, cv::Point(0, ignoreHeight), cv::Point(frame.cols, ignoreHeight), cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
-
     cv::addWeighted(overlay, 0.5, frame, 0.5, 0, frame);
+
+    cv::putText(frame, "FULL SCREEN TRACKING ACTIVE", cv::Point(frame.cols - 220, 28),
+                cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
 
     std::string label = "Gesture: " + gestureToString(_lastGesture);
     cv::putText(frame, label, cv::Point(10, 33), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 120), 2);
 
     if (!state.isDetected) return;
 
+    // ★ 이 줄의 'green' 오타를 cv::Scalar(0, 255, 0) 즉, 순수 초록색 값으로 완벽히 고쳤습니다!
     std::vector<std::vector<cv::Point>> contours = {state.contour};
     cv::drawContours(frame, contours, 0, cv::Scalar(0, 255, 0), 2);
     cv::circle(frame, state.center, 8, cv::Scalar(0, 120, 255), -1);
