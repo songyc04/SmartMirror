@@ -57,7 +57,7 @@ void setup() {
   ens160.setOperatingMode(SFE_ENS160_STANDARD);
 
   // 최초 Wifi 연결
-  sendAT("AT", 5000);                                                               // ESP8266 상태 확인
+  sendAT("AT", 2000);                                                               // ESP8266 상태 확인
   sendAT(String("AT+CWJAP=\"") + SSID + "\",\"" + PASSWORD + "\"", 5000);           // WIFI 연결 시도
   sendAT("AT+CIFSR", 5000);                                                        // IP 주소 확인
   delay(2000);
@@ -205,6 +205,7 @@ void sendAT(String cmd, int timeout) {
 
   if ((cmd == "AT") || (cmd.indexOf("AT+CWJAP") == 0) || (cmd.indexOf("AT+CIPSTART") == 0) || (cmd == "AT+CIPCLOSE"))
   {
+    Serial.println("Basic command");
     while (1)
     {
       res = "";
@@ -217,11 +218,11 @@ void sendAT(String cmd, int timeout) {
         {
           res += (char)espSerial.read();
         }
-        if (res.indexOf("OK") != -1)
-        {
-          Serial.println("OK sign >> " + res);
-          return;
-        }
+      }
+      if (res.indexOf("OK") != -1)
+      {
+        Serial.println("OK sign >> " + res);
+        return;
       }
       Serial.println(res);
     }
