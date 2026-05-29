@@ -73,7 +73,7 @@ MainWindow::MainWindow(QWidget *parent)
     blackOverlay->setGeometry(ui->centralWidget->rect());
     blackOverlay->setStyleSheet("background-color:black;");
     blackOverlay->raise();
-    blackOverlay->hide(); // 시작할 때는 화면 켜진 상태
+    blacㄴkOverlay->show(); // 시작할 때는 화면 켜진 상태
 }
 
 MainWindow::~MainWindow()
@@ -115,6 +115,7 @@ void MainWindow::onDataReceived()
 void MainWindow::onClientDisconnected()
 {
     qDebug() << "아두이노 연결 종료";
+    qDebug() << "아두이노 대기 중 - 포트:" << ARDUINO_PORT;
     if (tcpSocket) {
         tcpSocket->deleteLater();
         tcpSocket = nullptr;
