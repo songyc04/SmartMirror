@@ -7,6 +7,7 @@
 #include <QFrame>
 #include <QResizeEvent>
 #include <QGraphicsOpacityEffect>
+#include <QProcess>
 
 const quint16 ARDUINO_PORT = 9000;
 
@@ -73,7 +74,38 @@ MainWindow::MainWindow(QWidget *parent)
     blackOverlay->setGeometry(ui->centralWidget->rect());
     blackOverlay->setStyleSheet("background-color:black;");
     blackOverlay->raise();
-    blacㄴkOverlay->show(); // 시작할 때는 화면 켜진 상태
+    blackOverlay->show(); // 시작할 때는 화면 켜진 상태
+
+    // gesture detected
+    ytDlpProcess = new QProcess(this);
+    mpvProcess   = new QProcess(this);
+
+    // yt-dlp 완료 시 mpv 실행
+    connect(ytDlpProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this](int exitCode, QProcess::ExitStatus) {
+        if (exitCode != 0) {
+            qWarning() << "yt-dlp 실패";
+            return;
+        }
+        QString url = QString::fromUtf8(ytDlpProcess->readAllStandardOutput()).trimmed();
+        if (url.isEmpty()) {
+            qWarning() << "URL 추출 실패";
+            return;
+        }
+        qDebug() << "재생 URL:" << url;
+
+        // 기존 mpv 종료 후 재시작
+        if (mpvProcess->state() != QProcess::NotRunning) {
+            mpvProcess->kill();
+            mpvProcess->waitForFinished(1000);
+        }
+        mpvProcess->start("mpv", QStringList()
+            << "--no-video"
+            << "--input-ipc-server=/tmp/mpv-socket"
+            << url);
+    });
+
+
 }
 
 MainWindow::~MainWindow()
@@ -148,22 +180,23 @@ void MainWindow::processData(const QString &data)
     if (data == "OFF") {
         blackOverlay->show();
         blackOverlay->raise();
+        waitingData = false;
         return;
     }
     if (data == "ON") {
-        blackOverlay->hide();
+        waitingData = true;
         return;
     }
 
-    // BRI 단독 처리
-    if (data.startsWith("BRI:") && !data.contains("TEMP:")) {
+    // BRI 단독 처리processData
+    if (data.startsWith("BRI:")) {
         int briVal = data.section("BRI:", 1, 1).trimmed().toInt();
         applyBrightness(briVal);
         return;
     }
 
     // 온습도 + AQI + BRI 풀 패킷 처리
-    if (data.contains("TEMP:") && data.contains("HUMI:")) {
+    if (data.startsWith("TEMP:")) {
         QString tempStr = data.section("TEMP:", 1, 1).section(",", 0, 0).trimmed();
         QString humiStr = data.section("HUMI:", 1, 1).section(",", 0, 0).trimmed();
         QString aqiStr  = data.section("AQI:",  1, 1).section(",", 0, 0).trimmed();
@@ -193,6 +226,11 @@ void MainWindow::processData(const QString &data)
         if (data.contains("BRI:")) {
             applyBrightness(briVal);
         }
+
+        if (waitingData) {
+            blackOverlay->hide();
+            waitingData = false;
+        }
     }
 }
 
@@ -212,4 +250,41 @@ void MainWindow::resizeEvent(QResizeEvent *event)
     QMainWindow::resizeEvent(event);
     if (blackOverlay)  blackOverlay->setGeometry(ui->centralWidget->rect());
     if (overlayWidget) overlayWidget->setGeometry(ui->centralWidget->rect());
+}
+
+// ── 제스처 수신 처리 ────────────────────────────
+void MainWindow::gestureDetected(const QString &gesture)
+{
+    qDebug() << "제스처 수신:" << gesture;
+
+    if (gesture == "START") {
+        // 이미 재생 중이면 기존 프로세스 종료
+        if (mpvProcess->state() != QProcess::NotRunning) {
+            mpvProcess->kill();
+            mpvProcess->waitForFinished(1000);
+        }
+        if (ytDlpProcess->state() != QProcess::NotRunning) {
+            ytDlpProcess->kill();
+            ytDlpProcess->waitForFinished(1000);
+        }
+
+        // yt-dlp로 첫 번째 영상 URL 추출 (비동기)
+        ytDlpProcess->start("yt-dlp", QStringList()
+            << "ytsearch1:기분 좋을 때 듣는 노래"
+            << "--get-url"
+            << "--format" << "bestaudio");
+
+    } else if (gesture == "STOP") {
+        // mpv IPC 소켓으로 pause 토글
+        if (mpvProcess->state() == QProcess::Running) {
+            QProcess::execute("sh", QStringList() << "-c"
+                << "echo '{\"command\":[\"cycle\",\"pause\"]}' | socat - /tmp/mpv-socket");
+        }
+
+    } else if (gesture == "END") {
+        if (mpvProcess->state() != QProcess::NotRunning) {
+            mpvProcess->kill();
+            qDebug() << "재생 종료";
+        }
+    }
 }

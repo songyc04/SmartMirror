@@ -6,6 +6,7 @@
 #include <QFrame>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QProcess>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -27,6 +28,7 @@ private slots:
     void onNewConnection();
     void onDataReceived();
     void onClientDisconnected();
+    void gestureDetected(const QString& gesture);
 
 private:
     Ui::MainWindow *ui;
@@ -37,8 +39,13 @@ private:
     QTcpServer     *tcpServer;
     QTcpSocket     *tcpSocket;   // 현재 연결된 아두이노 소켓
 
+    QProcess       *ytDlpProcess;
+    QProcess       *mpvProcess;
+
     void processData(const QString &data);
     void applyBrightness(int briVal);
+
+    bool waitingData = false;
 };
 
 #endif // MAINWINDOW_H
