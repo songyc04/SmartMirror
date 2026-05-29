@@ -29,8 +29,8 @@ float cycletime;                    // HC-SR04 - Ultrasonic shoot time
 float distance;                     // HC-SR04 - distance to stuff
 bool isDiff = false;                // Temperature/Humidity/AQI compare to last value
 String payload;                     // Data store string
-String on = "ON";
-String off = "OFF";
+String on = "ON\n";
+String off = "OFF\n";
 
 // ⬇️ WIFI&TCP/IP settings
 const char* SSID = "abcd";                // WIFI SSID
@@ -124,7 +124,7 @@ void loop() {
         isDiff = false;
       }
       Serial.println(payload);
-      payload = String("BRI:") + brightness;
+      payload = String("BRI:") + brightness + "\n";
       Serial.println(payload);
       sendData(payload, payload.length());
     }
@@ -228,18 +228,27 @@ void sendAT(String cmd, int timeout) {
   }
   else
   {
-    res = "";
-    Serial.println(">> " + cmd);
-    espSerial.println(cmd);
-    long start = millis();
-    while (millis() - start < timeout)
+    while (1)
     {
-      while (espSerial.available())
+      res = "";
+      Serial.println(">> " + cmd);
+      espSerial.println(cmd);
+      long start = millis();
+      while (millis() - start < timeout)
       {
-        res += (char)espSerial.read();
+        while (espSerial.available())
+        {
+          res += (char)espSerial.read();
+        }
       }
+      if (res.indexOf("link is not" != -1))
+      {
+        Serial.println("OK sign >> " + res);
+        return;
+      }
+      Serial.println(res);
     }
-    Serial.println(res);
+    
   }
 }
 
