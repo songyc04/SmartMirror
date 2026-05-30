@@ -251,7 +251,7 @@ void MainWindow::resizeEvent(QResizeEvent *event)
     if (blackOverlay)  blackOverlay->setGeometry(ui->centralWidget->rect());
     if (overlayWidget) overlayWidget->setGeometry(ui->centralWidget->rect());
 }
-e
+
 // ── 제스처 수신 처리 ────────────────────────────
 void MainWindow::gestureDetected(const QString &gesture)
 {
