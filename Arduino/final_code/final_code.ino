@@ -33,10 +33,10 @@ String on = "ON\n";
 String off = "OFF\n";
 
 // ⬇️ WIFI&TCP/IP settings
-const char* SSID = "abcd";                // WIFI SSID
-const char* PASSWORD = "abcdabcd";        // WIFI PASSWORD
-const char* SERVER_IP = "192.168.0.2";    // Jetson Nano Server IP
-// const char* SERVER_IP = "192.168.0.4";    // Test Server IP(Virtual Machine + Port Forwarding)
+const char* SSID = "사랑채";                // WIFI SSID
+const char* PASSWORD = "tkfkdco!";        // WIFI PASSWORD
+// const char* SERVER_IP = "192.168.0.2";    // Jetson Nano Server IP
+const char* SERVER_IP = "192.168.0.22";    // Test Server IP(Virtual Machine + Port Forwarding)
 const int SERVER_PORT = 9000;             // Server access PORT number\
 
 // Function declare
@@ -96,6 +96,8 @@ void loop() {
     if (preState != state)  // OFF -> ON 이면 최초 센서값 전송해야함
     {
       sendAT(String("AT+CIPSTART=\"TCP\",\"") + SERVER_IP + "\"," + SERVER_PORT, 5000); // 서버 접속 시도
+      if (!state) return;
+      
       sendData(on, on.length());
       Serial.println("Power On.");
       getBrightness();
@@ -199,11 +201,10 @@ void getAirCondition() {
 void getBrightness() {
   brightness = analogRead(A0);
 }
-
 void sendAT(String cmd, int timeout) {
   String res = "";
 
-  if ((cmd == "AT") || (cmd.indexOf("AT+CWJAP") == 0) || (cmd.indexOf("AT+CIPSTART") == 0) || (cmd == "AT+CIPCLOSE"))
+  if ((cmd == "AT") || (cmd.indexOf("AT+CWJAP") == 0) || (cmd == "AT+CIPCLOSE"))
   {
     Serial.println("Basic command");
     while (1)
@@ -222,6 +223,37 @@ void sendAT(String cmd, int timeout) {
       if (res.indexOf("OK") != -1)
       {
         Serial.println("OK sign >> " + res);
+        return;
+      }
+      Serial.println(res);
+    }
+  }
+  else if (cmd.indexOf("AT+CIPSTART") == 0)
+  {
+    unsigned long check = millis();
+    while (1)
+    {
+      Serial.println("Try to connect...");
+      res = "";
+      Serial.println(">> " + cmd);
+      espSerial.println(cmd);
+      long start = millis();
+      while (millis() - start < timeout)
+      {
+        while (espSerial.available())
+        {
+          res += (char)espSerial.read();
+        }
+      }
+      if (res.indexOf("OK") != -1)
+      {
+        Serial.println("OK sign >> " + res);
+        return;
+      }
+
+      if (millis() - check > 15000)
+      {
+        state = !state;
         return;
       }
       Serial.println(res);
