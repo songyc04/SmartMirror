@@ -9,6 +9,7 @@
 #include <QProcess>
 #include <QThread>
 #include <QMutex>
+#include <QDateTime>
 
 // ── OpenCV 관련 헤더 ──────────────────────────
 #include <opencv2/opencv.hpp>
@@ -25,7 +26,6 @@ QT_END_NAMESPACE
 
 // ============================================================
 //  GestureWorker: OpenCV 제스처 감지를 별도 스레드에서 실행
-//  QThread를 상속받아 run()에서 카메라 루프를 돌립니다.
 // ============================================================
 class GestureWorker : public QThread
 {
@@ -37,25 +37,22 @@ public:
         , _qtUdpSock(qtUdpSock)
         , _qtAddr(qtAddr)
         , _running(false)
-    {}
+        , _lastGesture(GestureType::NONE)
+    {
+        _lastGestureTime = QDateTime::currentMSecsSinceEpoch();
+    }
 
-    // 외부에서 안전하게 스레드 종료 요청
     void stop() { _running = false; }
 
 signals:
-    // 제스처 감지 시 Qt 메인스레드로 신호 전달
     void gestureDetected(const QString& gesture);
-
-    // 카메라 오류 시 신호
     void cameraError(const QString& message);
 
 protected:
-    // ── 스레드 메인 루프 ────────────────────────
     void run() override
     {
         qDebug() << "[GestureWorker] 제스처 감지 스레드 시작";
 
-        // 카메라 열기 (V4L2 백엔드 우선, 실패 시 기본)
         cv::VideoCapture cap(0, cv::CAP_V4L2);
         if (!cap.isOpened()) {
             cap.open(0);
@@ -73,8 +70,36 @@ protected:
         recognizer.setSensitivity(1.0f);
         recognizer.setCooldown(800);
 
-        // 제스처 콜백: UDP 전송 + Qt 시그널 발행
+        // 제스처 콜백 내부에서 역방향 모션 오인식 차단 필터링 수행
         recognizer.setGestureCallback([this](GestureType g, float /*confidence*/) {
+            qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
+            qint64 timeDiff = currentTime - _lastGestureTime;
+            
+            // ── [오인식 해결 핵심] 역방향 불응기 (1.2초 동안 반대 동작 차단) ──
+            qint64 directionalCooldown = 1200; 
+            if (timeDiff < directionalCooldown) {
+                if (_lastGesture == GestureType::SWIPE_LEFT && g == GestureType::SWIPE_RIGHT) {
+                    qDebug() << "[필터링] SWIPE_LEFT 직후 복귀 무시 (SWIPE_RIGHT 차단)";
+                    return;
+                }
+                if (_lastGesture == GestureType::SWIPE_RIGHT && g == GestureType::SWIPE_LEFT) {
+                    qDebug() << "[필터링] SWIPE_RIGHT 직후 복귀 무시 (SWIPE_LEFT 차단)";
+                    return;
+                }
+                if (_lastGesture == GestureType::SWIPE_UP && g == GestureType::SWIPE_DOWN) {
+                    qDebug() << "[필터링] SWIPE_UP 직후 복귀 무시 (SWIPE_DOWN 차단)";
+                    return;
+                }
+                if (_lastGesture == GestureType::SWIPE_DOWN && g == GestureType::SWIPE_UP) {
+                    qDebug() << "[필터링] SWIPE_DOWN 직후 복귀 무시 (SWIPE_UP 차단)";
+                    return;
+                }
+            }
+
+            // 새로운 정상 제스처 상태 업데이트
+            _lastGesture = g;
+            _lastGestureTime = currentTime;
+
             QString gesture_msg;
             switch (g) {
                 case GestureType::SWIPE_LEFT:  gesture_msg = "GESTURE:SWIPE_LEFT";  break;
@@ -86,15 +111,12 @@ protected:
                 default: return;
             }
 
-            // UDP로 Qt UI에 전송
             if (_qtUdpSock != -1) {
                 QByteArray msg = gesture_msg.toUtf8();
                 sendto(_qtUdpSock, msg.constData(), msg.size(), 0,
                        (sockaddr*)&_qtAddr, sizeof(_qtAddr));
-                qDebug() << "[UDP 전송] Qt UI ->" << gesture_msg;
             }
 
-            // Qt 시그널로도 전달 (메인스레드 UI 직접 업데이트 가능)
             emit gestureDetected(gesture_msg);
         });
 
@@ -110,7 +132,10 @@ protected:
 
             cv::flip(frame, frame, 1); // 거울 모드
             recognizer.processFrame(frame);
-            msleep(5); // CPU 부하 조절
+            
+            // ── [오인식 해결 핵심] 과도한 프레임 샘플링 제한 (30ms = 약 33 FPS) ──
+            // 너무 초고속으로 좌표 변화를 추적하면 손을 돌려놓는 잔상까지 전부 인식되므로 주기를 늦춥니다.
+            msleep(30); 
         }
 
         cap.release();
@@ -118,15 +143,18 @@ protected:
     }
 
 private:
-    int           _qtUdpSock;
-    sockaddr_in   _qtAddr;
+    int         _qtUdpSock;
+    sockaddr_in _qtAddr;
     std::atomic<bool> _running;
+
+    // 마지막 제스처 정보 저장용 변수
+    GestureType _lastGesture;
+    qint64      _lastGestureTime;
 };
 
 
 // ============================================================
 //  ArduinoWorker: 아두이노 TCP 서버를 별도 스레드에서 실행
-//  아두이노 연결을 기다리며 데이터를 수신해 Qt 시그널로 전달
 // ============================================================
 class ArduinoWorker : public QThread
 {
@@ -214,10 +242,8 @@ protected:
                 std::string received(buffer);
                 QString data = QString::fromStdString(received).trimmed();
 
-                // Qt 시그널로 메인스레드에 전달
                 emit arduinoDataReceived(data);
 
-                // Qt UDP 포트로도 전달
                 if (_qtUdpSock != -1) {
                     sendto(_qtUdpSock, buffer, bytes, 0,
                            (sockaddr*)&_qtAddr, sizeof(_qtAddr));
@@ -243,7 +269,7 @@ private:
 
 
 // ============================================================
-//  MainWindow
+//  MainWindow 클래스 선언부
 // ============================================================
 namespace Ui { class MainWindow; }
 
@@ -256,20 +282,16 @@ public:
     ~MainWindow();
 
 public slots:
-    // ── 아두이노 TCP 슬롯 (기존 유지) ────────────
     void onNewConnection();
     void onDataReceived();
     void onClientDisconnected();
 
-    // ── 제스처 수신 슬롯 ──────────────────────────
     void gestureDetected(const QString& gesture);
 
-    // ── 아두이노 워커 슬롯 ────────────────────────
     void onArduinoData(const QString& data);
     void onArduinoConnected(const QString& ip);
     void onArduinoDisconnected();
 
-    // ── 카메라 오류 슬롯 ──────────────────────────
     void onCameraError(const QString& message);
 
 private slots:
@@ -278,38 +300,30 @@ private slots:
 private:
     void processData(const QString& data);
     void applyBrightness(int briVal);
-    void initUdpSocket();       // UDP 소켓 초기화
-    void startWorkerThreads();  // 워커 스레드 시작
+    void initUdpSocket();       
+    void startWorkerThreads();  
 
     Ui::MainWindow* ui;
 
-    // ── 기존 Qt TCP (Qt 자체 TCP 서버, 필요 시 유지) ──
     QTcpServer* tcpServer  = nullptr;
     QTcpSocket* tcpSocket  = nullptr;
 
-    // ── 타이머 ────────────────────────────────────
     QTimer* timer = nullptr;
 
-    // ── 오버레이 위젯 ─────────────────────────────
     QWidget* overlayWidget = nullptr;
-    QFrame*  blackOverlay  = nullptr;
+    QFrame* blackOverlay  = nullptr;
 
-    // ── 미디어 프로세스 ───────────────────────────
     QProcess* ytDlpProcess = nullptr;
     QProcess* mpvProcess   = nullptr;
 
-    // ── 멀티스레드 워커 ───────────────────────────
-    GestureWorker*  gestureWorker  = nullptr;  // OpenCV 제스처 스레드
-    ArduinoWorker*  arduinoWorker  = nullptr;  // 아두이노 TCP 스레드
+    GestureWorker* gestureWorker  = nullptr;  
+    ArduinoWorker* arduinoWorker  = nullptr;  
 
-    // ── UDP 소켓 (Qt → 제스처/아두이노 데이터 전달용) ──
     int         _qtUdpSock = -1;
     sockaddr_in _qtAddr{};
 
-    // ── 상태 플래그 ───────────────────────────────
     bool waitingData = false;
 
-    // ── 포트 설정 ─────────────────────────────────
     static constexpr int ARDUINO_TCP_PORT = 9000;
     static constexpr int QT_UDP_PORT      = 9001;
 
