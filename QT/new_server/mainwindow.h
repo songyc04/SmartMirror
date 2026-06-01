@@ -9,9 +9,7 @@
 #include <QProcess>
 #include <QPropertyAnimation>
 #include "weatherpanel.h"
-
-// UDP 소켓 전방 선언 추가
-class QUdpSocket;
+#include "newspanel.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -34,27 +32,28 @@ private slots:
     void onDataReceived();
     void onClientDisconnected();
     void gestureDetected(const QString& gesture);
-    void onUdpDataReceived(); // ⭐ UDP 데이터 수신을 위한 슬롯 추가
 
 private:
     Ui::MainWindow *ui;
     QTimer         *timer;
     QFrame         *blackOverlay;
     QWidget        *overlayWidget;
-    WeatherPanel   *WeatherWidget;
+    WeatherPanel *WeatherWidget;
 
     QTcpServer     *tcpServer;
     QTcpSocket     *tcpSocket;   // 현재 연결된 아두이노 소켓
-    QUdpSocket     *udpSocket;   // ⭐ UDP 제스처 수신용 소켓 추가
 
     QProcess       *ytDlpProcess;
     QProcess       *mpvProcess;
+
+    NewsPanel *newsWidget;
 
     void processData(const QString &data);
     void applyBrightness(int briVal);
 
     void showWeatherPanel();
-    void hideWeatherPanel();
+
+    void showNewsPanel();
 
     bool waitingData = false;
 };

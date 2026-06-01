@@ -6,6 +6,7 @@
 
 QT       += core gui
 QT       += core gui network
+QT += network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -27,12 +28,15 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
-    weatherpanel.cpp
+    weatherpanel.cpp \
+    newspanel.cpp
 
 HEADERS += \
         mainwindow.h \
-    weatherpanel.h
+    weatherpanel.h \
+    newspanel.h
 
 FORMS += \
         mainwindow.ui \
-    weatherpanel.ui
+    weatherpanel.ui \
+    newspanel.ui
