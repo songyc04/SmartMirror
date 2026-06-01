@@ -79,8 +79,8 @@ MainWindow::MainWindow(QWidget *parent)
     //blackOverlay->show(); // 시작할 때는 화면 켜진 상태
     blackOverlay->hide();
 
-    //weather panel
-    WeatherWidget =new WeatherPanel(this);
+    //weather panel(초기위치)
+    WeatherWidget =new WeatherPanel(ui->centralWidget);
     WeatherWidget->setGeometry(
         1100,
         1200,
@@ -92,7 +92,9 @@ MainWindow::MainWindow(QWidget *parent)
         this,
         [=]()
     {
-        showWeatherPanel();
+        WeatherWidget->move(1080, 460);
+        WeatherWidget->show();
+        blackOverlay->raise();
     });
 
     // gesture detected
@@ -334,33 +336,14 @@ void MainWindow::gestureDetected(const QString &gesture)
 //Weather Panel 보이기
 void MainWindow::showWeatherPanel()
 {
+    WeatherWidget->move(1080, 460);
     WeatherWidget->show();
-    QPropertyAnimation *anim =
-        new QPropertyAnimation(
-            WeatherWidget,
-            "pos");
 
-    anim->setDuration(500);
-    anim->setStartValue(
-        QPoint(1100,1200));
-    anim->setEndValue(
-        QPoint(1100,500));
-    anim->start(
-        QAbstractAnimation::DeleteWhenStopped);
+    if (blackOverlay->isVisible())
+            blackOverlay->raise();
 }
 //Weather Panel 숨기기
 void MainWindow::hideWeatherPanel()
 {
-    QPropertyAnimation *anim =
-        new QPropertyAnimation(
-            WeatherWidget,
-            "pos");
-
-    anim->setDuration(500);
-    anim->setStartValue(
-        QPoint(1100,500));
-    anim->setEndValue(
-        QPoint(1100,1200));
-    anim->start(
-        QAbstractAnimation::DeleteWhenStopped);
+    WeatherWidget->hide();
 }

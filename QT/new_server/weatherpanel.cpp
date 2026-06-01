@@ -216,8 +216,14 @@ void WeatherPanel::onWeatherReply(
     double temp =
         current["temperature_2m"].toDouble();
 
+    double feelsLike =
+        current["apparent_temperature"].toDouble();
+
     int humidity =
         current["relative_humidity_2m"].toInt();
+
+    double wind =
+        current["wind_speed_10m"].toDouble();
 
     int weatherCode =
         current["weather_code"].toInt();
@@ -252,8 +258,8 @@ void WeatherPanel::onWeatherReply(
         weatherText);
 
     ui->labelDetail->setText(
-        QString("습도 %1%")
-            .arg(humidity));
+        QString("체감 %1°   습도 %2%   풍속 %3 km/h")
+            .arg(feelsLike).arg(humidity).arg(wind));
 
     ui->labelLocation->setText(
         "현재 위치 : 서울");
