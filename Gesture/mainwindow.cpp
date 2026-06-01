@@ -83,7 +83,6 @@ MainWindow::MainWindow(QWidget *parent)
 // ============================================================
 MainWindow::~MainWindow()
 {
-    // 워커 스레드 안전하게 종료
     if (gestureWorker) {
         gestureWorker->stop();
         gestureWorker->wait(3000);
@@ -121,11 +120,8 @@ void MainWindow::initUdpSocket()
 // ============================================================
 void MainWindow::startWorkerThreads()
 {
-    // ── 1. 제스처 워커 스레드 ─────────────────────
     gestureWorker = new GestureWorker(_qtUdpSock, _qtAddr, this);
 
-    // 제스처 감지 시그널 → MainWindow 슬롯 연결
-    // Qt::QueuedConnection: 다른 스레드에서 발생한 시그널을 메인 스레드에서 안전하게 처리
     connect(gestureWorker, &GestureWorker::gestureDetected,
             this,          &MainWindow::gestureDetected,
             Qt::QueuedConnection);
@@ -137,7 +133,6 @@ void MainWindow::startWorkerThreads()
     gestureWorker->start();
     qDebug() << "[MainWindow] 제스처 워커 스레드 시작됨";
 
-    // ── 2. 아두이노 워커 스레드 ───────────────────
     arduinoWorker = new ArduinoWorker(ARDUINO_TCP_PORT, _qtUdpSock, _qtAddr, this);
 
     connect(arduinoWorker, &ArduinoWorker::arduinoDataReceived,
@@ -181,8 +176,6 @@ void MainWindow::onArduinoDisconnected()
 void MainWindow::onCameraError(const QString& message)
 {
     qWarning() << "[카메라 오류]" << message;
-    // 필요 시 UI에 알림 표시
-    // QMessageBox::warning(this, "카메라 오류", message);
 }
 
 // ============================================================
@@ -296,12 +289,10 @@ void MainWindow::gestureDetected(const QString& gesture)
 {
     qDebug() << "[제스처 수신]" << gesture;
 
-    // GESTURE: 접두사 제거
     QString g = gesture;
     if (g.startsWith("GESTURE:")) g = g.mid(8);
 
     if (g == "HAND_OPEN" || g == "START") {
-        // 재생 시작
         if (mpvProcess->state() != QProcess::NotRunning) {
             mpvProcess->kill();
             mpvProcess->waitForFinished(1000);
@@ -316,28 +307,24 @@ void MainWindow::gestureDetected(const QString& gesture)
             << "--format" << "bestaudio");
 
     } else if (g == "HAND_FIST" || g == "STOP") {
-        // 일시정지 토글
         if (mpvProcess->state() == QProcess::Running) {
             QProcess::execute("sh", QStringList() << "-c"
                 << "echo '{\"command\":[\"cycle\",\"pause\"]}' | socat - /tmp/mpv-socket");
         }
 
     } else if (g == "SWIPE_LEFT") {
-        qDebug() << "[제스처] 다음 화면";
-        // Qt UI 페이지 전환 로직 연결 가능
+        qDebug() << "[제스처 최종 액션] 다음 화면 페이지 전환 실행";
 
     } else if (g == "SWIPE_RIGHT") {
-        qDebug() << "[제스처] 이전 화면";
+        qDebug() << "[제스처 최종 액션] 이전 화면 페이지 전환 실행";
 
     } else if (g == "SWIPE_UP") {
         qDebug() << "[제스처] 볼륨 증가";
-        QProcess::execute("sh", QStringList() << "-c"
-            << "amixer set Master 10%+");
+        QProcess::execute("sh", QStringList() << "-c" << "amixer set Master 10%+");
 
     } else if (g == "SWIPE_DOWN") {
         qDebug() << "[제스처] 볼륨 감소";
-        QProcess::execute("sh", QStringList() << "-c"
-            << "amixer set Master 10%-");
+        QProcess::execute("sh", QStringList() << "-c" << "amixer set Master 10%-");
 
     } else if (g == "END") {
         if (mpvProcess->state() != QProcess::NotRunning) {
