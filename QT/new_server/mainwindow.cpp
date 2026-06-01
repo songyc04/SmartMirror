@@ -81,8 +81,9 @@ MainWindow::MainWindow(QWidget *parent)
     overlayWidget->setGeometry(ui->centralWidget->rect());
     overlayWidget->setAttribute(Qt::WA_TransparentForMouseEvents);
     overlayWidget->setStyleSheet("background-color: rgba(0,0,0,0);");
-    overlayWidget->raise();
-    overlayWidget->show();
+    //overlayWidget->raise();
+    //overlayWidget->show();
+    overlayWidget->hide();
 
     // ── 화면 ON/OFF 오버레이 (맨 위) ──────────
     blackOverlay = new QFrame(ui->centralWidget);

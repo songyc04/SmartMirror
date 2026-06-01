@@ -9,19 +9,22 @@
 #include <QGraphicsOpacityEffect>
 #include <QProcess>
 #include <QPropertyAnimation>
+#include <QUdpSocket> // UDP 인클루드
 
 const quint16 ARDUINO_PORT = 9000;
+const quint16 GESTURE_PORT = 9001; // UDP 제스처/감정 수신용 포트
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , tcpSocket(nullptr)
+    , udpSocket(nullptr) // 초기화 리스트 추가
 {
     ui->setupUi(this);
 
     this->resize(1920, 1080);
 
-    // ── TCP 서버 시작 ──────────────────────────
+    // ── TCP 서버 시작 (아두이노 통신용) ──────────────────────────
     tcpServer = new QTcpServer(this);
     connect(tcpServer, &QTcpServer::newConnection,
             this,      &MainWindow::onNewConnection);
@@ -30,6 +33,17 @@ MainWindow::MainWindow(QWidget *parent)
         qWarning() << "TCP 서버 시작 실패:" << tcpServer->errorString();
     } else {
         qDebug() << "아두이노 대기 중 - 포트:" << ARDUINO_PORT;
+    }
+
+    // ── UDP 서버(소켓) 시작 (파이썬 DeepFace 수신용) ──────────────────────
+    udpSocket = new QUdpSocket(this);
+    // 모든 IP로부터 GESTURE_PORT(9001)로 들어오는 UDP 패킷을 감지합니다.
+    if (!udpSocket->bind(QHostAddress::Any, GESTURE_PORT)) {
+        qWarning() << "UDP 소켓 바인딩 실패:" << udpSocket->errorString();
+    } else {
+        qDebug() << "제스처/감정 UDP 수신 대기 중 - 포트:" << GESTURE_PORT;
+        connect(udpSocket, &QUdpSocket::readyRead,
+                this,      &MainWindow::onUdpDataReceived);
     }
 
     // ── 시계 타이머 ────────────────────────────
@@ -75,29 +89,24 @@ MainWindow::MainWindow(QWidget *parent)
     blackOverlay = new QFrame(ui->centralWidget);
     blackOverlay->setGeometry(ui->centralWidget->rect());
     blackOverlay->setStyleSheet("background-color:black;");
-    //blackOverlay->raise();
-    //blackOverlay->show(); // 시작할 때는 화면 켜진 상태
     blackOverlay->hide();
 
-    //weather panel(초기위치)
-    WeatherWidget =new WeatherPanel(ui->centralWidget);
-    WeatherWidget->setGeometry(
-        1100,
-        1200,
-        800,
-        500);
-    //WeatherWidget->hide();
-    QTimer::singleShot(
-        1000,
-        this,
-        [=]()
-    {
+    // ── 날씨 패널 초기화 및 위치 설정 ──────────────────────
+    WeatherWidget = new WeatherPanel(ui->centralWidget);
+    WeatherWidget->setGeometry(1100, 1200, 800, 500);
+    
+    QTimer::singleShot(1000, this, [=]() {
         WeatherWidget->move(1080, 460);
         WeatherWidget->show();
         blackOverlay->raise();
     });
 
-    // gesture detected
+    // ── 뉴스 패널 초기화 및 위치 설정 ──────────────────────
+    //newsWidget = new NewsPanel(ui->centralWidget);
+    //newsWidget->setGeometry(1920, 150, 1300, 800);
+    //newsWidget->hide(); // 오타 수정함 (hidoverlayWidgete -> hide)
+
+    // ── 미디어 프로세스 (yt-dlp / mpv) 설정 ──────────────────────
     ytDlpProcess = new QProcess(this);
     mpvProcess   = new QProcess(this);
 
@@ -125,7 +134,8 @@ MainWindow::MainWindow(QWidget *parent)
             << "--input-ipc-server=/tmp/mpv-socket"
             << url);
     });
-    //오른쪽 위로 위치 설정
+
+    // ── 오른쪽 위 UI 컴포넌트 위치 배치 ──────────────────────
     ui->dateLabel->move(1450, 20);
     ui->timeLabel->move(1380, 50);
     ui->lcdNumberTemp->move(1280, 180);
@@ -134,23 +144,12 @@ MainWindow::MainWindow(QWidget *parent)
     ui->label_2->move(1430, 260);
     ui->labelAQI->move(1280, 360);
 
-    //크기 설정
+    // 크기 설정
     ui->timeLabel->resize(400, 120);
     ui->lcdNumberTemp->resize(130, 50);
     ui->lcdNumberHumi->resize(130, 50);
     ui->label->resize(120, 50);
     ui->label_2->resize(160, 50);
-
-    newsWidget =
-        new NewsPanel(ui->centralWidget);
-
-    newsWidget->setGeometry(
-        1920,
-        150,
-        1300,
-        800);
-
-    newsWidget->hidoverlayWidgete();
 }
 
 MainWindow::~MainWindow()
@@ -158,7 +157,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-// ── 새 아두이노 연결 ────────────────────────────
+// ── 새 아두이노 연결 (TCP) ────────────────────────────
 void MainWindow::onNewConnection()
 {
     if (tcpSocket) {
@@ -175,7 +174,7 @@ void MainWindow::onNewConnection()
     qDebug() << "아두이노 연결됨:" << tcpSocket->peerAddress().toString();
 }
 
-// ── 데이터 수신 ─────────────────────────────────
+// ── 데이터 수신 (TCP) ─────────────────────────────────
 void MainWindow::onDataReceived()
 {
     if (!tcpSocket) return;
@@ -188,7 +187,7 @@ void MainWindow::onDataReceived()
     }
 }
 
-// ── 연결 종료 ───────────────────────────────────
+// ── 연결 종료 (TCP) ───────────────────────────────────
 void MainWindow::onClientDisconnected()
 {
     qDebug() << "아두이노 연결 종료";
@@ -199,26 +198,43 @@ void MainWindow::onClientDisconnected()
     }
 }
 
+// ── UDP 데이터 수신 처리 ─────────────────────────────────
+void MainWindow::onUdpDataReceived()
+{
+    while (udpSocket->hasPendingDatagrams()) {
+        QByteArray datagram;
+        datagram.resize(static_cast<int>(udpSocket->pendingDatagramSize()));
+        QHostAddress sender;
+        quint16 senderPort;
+
+        udpSocket->readDatagram(datagram.data(), datagram.size(), &sender, &senderPort);
+
+        // 받은 데이터를 QString으로 변환 및 공백 제거
+        QString gesture = QString::fromUtf8(datagram).trimmed();
+        qDebug() << "UDP 수신 [" << sender.toString() << ":" << senderPort << "] ->" << gesture;
+
+        // 제스처/감정 처리 함수 호출
+        gestureDetected(gesture);
+    }
+}
+
 // ── 밝기 오버레이 적용 ──────────────────────────
 void MainWindow::applyBrightness(int briVal)
 {
     if (briVal >= 0 && briVal <= 200) {
-        // 어두움: 검은 오버레이
         int alpha = ((200 - briVal) * 180) / 200;
         overlayWidget->setStyleSheet(
             QString("background-color: rgba(0,0,0,%1);").arg(alpha));
     } else if (briVal >= 201 && briVal <= 350) {
-        // 적정 밝기: 오버레이 없음
         overlayWidget->setStyleSheet("background-color: rgba(0,0,0,0);");
     } else {
-        // 너무 밝음: 흰 오버레이
         int alpha = qBound(0, ((briVal - 350) * 180) / 200, 180);
         overlayWidget->setStyleSheet(
             QString("background-color: rgba(255,255,255,%1);").arg(alpha));
     }
 }
 
-// ── 데이터 파싱 및 UI 업데이트 ──────────────────
+// ── 데이터 파싱 및 UI 업데이트 (TCP 데이터 처리) ──────────────────
 void MainWindow::processData(const QString &data)
 {
     // ON / OFF 처리
@@ -232,21 +248,16 @@ void MainWindow::processData(const QString &data)
         waitingData = true;
         return;
     }
-    if(data == "SHOW_WEATHER")
-    {
-        showWeatherPanel();
+    if (data == "SHOW_WEATHER") {
+        //showWeatherPanel();
         return;
     }
-    if(data=="SHOW_NEWS"){
-        showNewsPanel();
-        return;
-    }
-    if(data=="SHOW_WEATHER"){
-        showWeatherPanel();
+    if (data == "SHOW_NEWS") {
+        //showNewsPanel();
         return;
     }
 
-    // BRI 단독 처리processData
+    // BRI 단독 처리
     if (data.startsWith("BRI:")) {
         int briVal = data.section("BRI:", 1, 1).trimmed().toInt();
         applyBrightness(briVal);
@@ -280,7 +291,6 @@ void MainWindow::processData(const QString &data)
         }
         ui->labelAQI->setText(emoji);
 
-        // BRI가 포함된 경우 밝기도 반영
         if (data.contains("BRI:")) {
             applyBrightness(briVal);
         }
@@ -310,13 +320,23 @@ void MainWindow::resizeEvent(QResizeEvent *event)
     if (overlayWidget) overlayWidget->setGeometry(ui->centralWidget->rect());
 }
 
-// ── 제스처 수신 처리 ────────────────────────────
+// ── 제스처 및 감정 데이터 처리 수신부 ────────────────────────────
 void MainWindow::gestureDetected(const QString &gesture)
 {
-    qDebug() << "제스처 수신:" << gesture;
+    qDebug() << "제스처/감정 수신:" << gesture;
+
+    // 파이썬 DeepFace 연동 감정 분기 예시 (필요시 활성화하여 사용하세요)
+    /*
+    if (gesture == "HAPPY") {
+        // 행복한 표정일 때의 액션
+        return;
+    } else if (gesture == "SAD") {
+        // 슬픈 표정일 때의 액션
+        return;
+    }
+    */
 
     if (gesture == "START") {
-        // 이미 재생 중이면 기존 프로세스 종료
         if (mpvProcess->state() != QProcess::NotRunning) {
             mpvProcess->kill();
             mpvProcess->waitForFinished(1000);
@@ -326,14 +346,12 @@ void MainWindow::gestureDetected(const QString &gesture)
             ytDlpProcess->waitForFinished(1000);
         }
 
-        // yt-dlp로 첫 번째 영상 URL 추출 (비동기)
         ytDlpProcess->start("yt-dlp", QStringList()
             << "ytsearch1:기분 좋을 때 듣는 노래"
             << "--get-url"
             << "--format" << "bestaudio");
 
     } else if (gesture == "STOP") {
-        // mpv IPC 소켓으로 pause 토글
         if (mpvProcess->state() == QProcess::Running) {
             QProcess::execute("sh", QStringList() << "-c"
                 << "echo '{\"command\":[\"cycle\",\"pause\"]}' | socat - /tmp/mpv-socket");
@@ -347,82 +365,47 @@ void MainWindow::gestureDetected(const QString &gesture)
     }
 }
 
-//Weather Panel 보이기
-void MainWindow::showWeatherPanel()
-{
-    WeatherWidget->show();
-    // 뉴스 오른쪽으로 퇴장
-    QPropertyAnimation *newsAnim =
-        new QPropertyAnimation(
-            newsWidget,
-            "pos");
+// ── Weather Panel 보이기 (애니메이션 전환 효과) ──────────────────────
+//void MainWindow::showWeatherPanel()
+//{
+//    WeatherWidget->show();
+    
+//    // 뉴스 오른쪽으로 퇴장
+//    //QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
+//    newsAnim->setDuration(700);
+//    newsAnim->setStartValue(QPoint(500, 150));
+//    newsAnim->setEndValue(QPoint(1920, 150));
 
-    newsAnim->setDuration(700);
+//    // 날씨 왼쪽에서 등장
+//    QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
+//    weatherAnim->setDuration(700);
+//    weatherAnim->setStartValue(QPoint(-900, 460));
+//    weatherAnim->setEndValue(QPoint(1080, 460));
 
-    newsAnim->setStartValue(
-        QPoint(500,150));
+//    newsAnim->start(QAbstractAnimation::DeleteWhenStopped);
+//    weatherAnim->start(QAbstractAnimation::DeleteWhenStopped);
 
-    newsAnim->setEndValue(
-        QPoint(1920,150));
-    // 날씨 왼쪽에서 등장
-    QPropertyAnimation *weatherAnim =
-        new QPropertyAnimation(
-            WeatherWidget,
-            "pos");
+//    if (blackOverlay->isVisible())
+//        blackOverlay->raise();
+//}
 
-    weatherAnim->setDuration(700);
+// ── News Panel 보이기 (애니메이션 전환 효과) ──────────────────────
+//void MainWindow::showNewsPanel()
+//{
+//    newsWidget->show();
+    
+//    // 날씨 왼쪽으로 이동
+//    QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
+//    weatherAnim->setDuration(700);
+//    weatherAnim->setStartValue(QPoint(1080, 460));
+//    weatherAnim->setEndValue(QPoint(-900, 460));
 
-    weatherAnim->setStartValue(
-        QPoint(-900,460));
+//    // 뉴스 오른쪽에서 등장
+//    QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
+//    newsAnim->setDuration(700);
+//    newsAnim->setStartValue(QPoint(1920, 150));
+//    newsAnim->setEndValue(QPoint(500, 150));
 
-    weatherAnim->setEndValue(
-        QPoint(1080,460));
-
-    newsAnim->start(
-        QAbstractAnimation::DeleteWhenStopped);
-
-    weatherAnim->start(
-        QAbstractAnimation::DeleteWhenStopped);
-
-    if (blackOverlay->isVisible())
-        blackOverlay->raise();
-}
-
-//News Panel 보이기
-void MainWindow::showNewsPanel()
-{
-    newsWidget->show();
-    // 날씨 왼쪽으로 이동
-    QPropertyAnimation *weatherAnim =
-        new QPropertyAnimation(
-            WeatherWidget,
-            "pos");
-
-    weatherAnim->setDuration(700);
-
-    weatherAnim->setStartValue(
-        QPoint(1080,460));
-
-    weatherAnim->setEndValue(
-        QPoint(-900,460));
-
-    // 뉴스 오른쪽에서 등장
-    QPropertyAnimation *newsAnim =
-        new QPropertyAnimation(
-            newsWidget,
-            "pos");
-
-    newsAnim->setDuration(700);
-
-    newsAnim->setStartValue(
-        QPoint(1920,150));
-
-    newsAnim->setEndValue(
-        QPoint(500,150));
-
-    weatherAnim->start(
-        QAbstractAnimation::DeleteWhenStopped);
-
-    newsAnim->start(
-        QAbstractAnimation::DeleteWhenStopped);
-}
+//    weatherAnim->start(QAbstractAnimation::DeleteWhenStopped);
+//    newsAnim->start(QAbstractAnimation::DeleteWhenStopped);
+//}
