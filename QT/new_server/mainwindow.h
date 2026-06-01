@@ -7,6 +7,8 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QProcess>
+#include <QPropertyAnimation>
+#include "weatherpanel.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -35,6 +37,7 @@ private:
     QTimer         *timer;
     QFrame         *blackOverlay;
     QWidget        *overlayWidget;
+    WeatherPanel *WeatherWidget;
 
     QTcpServer     *tcpServer;
     QTcpSocket     *tcpSocket;   // 현재 연결된 아두이노 소켓
@@ -44,6 +47,9 @@ private:
 
     void processData(const QString &data);
     void applyBrightness(int briVal);
+
+    void showWeatherPanel();
+    void hideWeatherPanel();
 
     bool waitingData = false;
 };

@@ -8,6 +8,7 @@
 #include <QResizeEvent>
 #include <QGraphicsOpacityEffect>
 #include <QProcess>
+#include <QPropertyAnimation>
 
 const quint16 ARDUINO_PORT = 9000;
 
@@ -77,6 +78,22 @@ MainWindow::MainWindow(QWidget *parent)
     //blackOverlay->raise();
     //blackOverlay->show(); // 시작할 때는 화면 켜진 상태
     blackOverlay->hide();
+
+    //weather panel
+    WeatherWidget =new WeatherPanel(this);
+    WeatherWidget->setGeometry(
+        1100,
+        1200,
+        800,
+        500);
+    //WeatherWidget->hide();
+    QTimer::singleShot(
+        1000,
+        this,
+        [=]()
+    {
+        showWeatherPanel();
+    });
 
     // gesture detected
     ytDlpProcess = new QProcess(this);
@@ -202,6 +219,16 @@ void MainWindow::processData(const QString &data)
         waitingData = true;
         return;
     }
+    if(data == "SHOW_WEATHER")
+    {
+        showWeatherPanel();
+        return;
+    }
+    if(data == "HIDE_WEATHER")
+    {
+        hideWeatherPanel();
+        return;
+    }
 
     // BRI 단독 처리processData
     if (data.startsWith("BRI:")) {
@@ -302,4 +329,38 @@ void MainWindow::gestureDetected(const QString &gesture)
             qDebug() << "재생 종료";
         }
     }
+}
+
+//Weather Panel 보이기
+void MainWindow::showWeatherPanel()
+{
+    WeatherWidget->show();
+    QPropertyAnimation *anim =
+        new QPropertyAnimation(
+            WeatherWidget,
+            "pos");
+
+    anim->setDuration(500);
+    anim->setStartValue(
+        QPoint(1100,1200));
+    anim->setEndValue(
+        QPoint(1100,500));
+    anim->start(
+        QAbstractAnimation::DeleteWhenStopped);
+}
+//Weather Panel 숨기기
+void MainWindow::hideWeatherPanel()
+{
+    QPropertyAnimation *anim =
+        new QPropertyAnimation(
+            WeatherWidget,
+            "pos");
+
+    anim->setDuration(500);
+    anim->setStartValue(
+        QPoint(1100,500));
+    anim->setEndValue(
+        QPoint(1100,1200));
+    anim->start(
+        QAbstractAnimation::DeleteWhenStopped);
 }

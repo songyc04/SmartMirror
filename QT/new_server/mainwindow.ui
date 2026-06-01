@@ -17,8 +17,8 @@
    <widget class="QLabel" name="labelAQI">
     <property name="geometry">
      <rect>
-      <x>280</x>
-      <y>190</y>
+      <x>250</x>
+      <y>80</y>
       <width>101</width>
       <height>41</height>
      </rect>
@@ -76,10 +76,10 @@ font-size:20pt;</string>
    <widget class="QLCDNumber" name="lcdNumberHumi">
     <property name="geometry">
      <rect>
-      <x>330</x>
-      <y>120</y>
-      <width>159</width>
-      <height>89</height>
+      <x>380</x>
+      <y>130</y>
+      <width>91</width>
+      <height>41</height>
      </rect>
     </property>
    </widget>
