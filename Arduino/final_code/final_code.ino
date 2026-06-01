@@ -33,10 +33,10 @@ String on = "ON\n";
 String off = "OFF\n";
 
 // ⬇️ WIFI&TCP/IP settings
-const char* SSID = "abcd";                // WIFI SSID
-const char* PASSWORD = "abcdabcd";        // WIFI PASSWORD
-const char* SERVER_IP = "192.168.0.2";    // Jetson Nano Server IP
-// const char* SERVER_IP = "192.168.0.22";    // Test Server IP(Virtual Machine + Port Forwarding)
+const char* SSID = "사랑채";                // WIFI SSID
+const char* PASSWORD = "tkfkdco!";        // WIFI PASSWORD
+// const char* SERVER_IP = "192.168.0.2";    // Jetson Nano Server IP
+const char* SERVER_IP = "192.168.0.22";    // Test Server IP(Virtual Machine + Port Forwarding)
 const int SERVER_PORT = 9000;             // Server access PORT number\
 
 // Function declare
@@ -57,15 +57,12 @@ void setup() {
   ens160.setOperatingMode(SFE_ENS160_STANDARD);
 
   // 최초 Wifi 연결
-  sendAT("AT", 2000);                                                               // ESP8266 상태 확인
-  sendAT(String("AT+CWJAP=\"") + SSID + "\",\"" + PASSWORD + "\"", 5000);           // WIFI 연결 시도
-  sendAT("AT+CIFSR", 5000);                                                        // IP 주소 확인
+  sendAT("AT", 1500);                                                               // ESP8266 상태 확인
+  sendAT(String("AT+CWJAP=\"") + SSID + "\",\"" + PASSWORD + "\"", 2000);           // WIFI 연결 시도
+  sendAT("AT+CIFSR", 2000);                                                        // IP 주소 확인
   delay(2000);
   
-  while (!ens160.checkDataStatus())
-  {
-    Serial.println("ENS160 ready to...");
-  }  
+  while (!ens160.checkDataStatus()) Serial.println("ENS160 ready to...");
 }
 
 void loop() {
@@ -95,22 +92,19 @@ void loop() {
   {
     if (preState != state)  // OFF -> ON 이면 최초 센서값 전송해야함
     {
-      sendAT(String("AT+CIPSTART=\"TCP\",\"") + SERVER_IP + "\"," + SERVER_PORT, 5000); // 서버 접속 시도
+      sendAT(String("AT+CIPSTART=\"TCP\",\"") + SERVER_IP + "\"," + SERVER_PORT, 2000); // 서버 접속 시도
       if (!state) return;
       
       sendData(on, on.length());
-      Serial.println("Power On.");
       getBrightness();
       getAirCondition();
       while ((temperature < 10.0) || (temperature > 40.0) || (humidity > 100.0) || (humidity == 0.0) || (aqi == 0))
       {
-        payload = String("TEMP:") + temperature + ",HUMI:" + humidity + ",AQI:" + aqi + ",BRI:" + brightness + "\n";
-        Serial.println(payload);
+        // payload = String("TEMP:") + temperature + ",HUMI:" + humidity + ",AQI:" + aqi + ",BRI:" + brightness + "\n";
         getAirCondition();
       }
       
       payload = String("TEMP:") + temperature + ",HUMI:" + humidity + ",AQI:" + aqi + ",BRI:" + brightness + "\n";
-      Serial.println(payload);
       sendData(payload, payload.length());
     }
     else                    // ON -> ON
@@ -121,13 +115,11 @@ void loop() {
       if (isDiff)
       {
         payload = String("TEMP:") + temperature + ",HUMI:" + humidity + ",AQI:" + aqi + ",BRI:" + brightness + "\n";
-        Serial.println(payload);
-        sendData(payload, payload.length());
+        // sendData(payload, payload.length());
         isDiff = false;
       }
-      Serial.println(payload);
-      payload = String("BRI:") + brightness + "\n";
-      Serial.println(payload);
+      else payload = String("BRI:") + brightness + "\n";
+
       sendData(payload, payload.length());
     }
   }
@@ -135,17 +127,12 @@ void loop() {
   {
     if (preState != state)
     {
-      
       Serial.println("OFF");
       sendData(off, off.length());
-      sendAT("AT+CIPCLOSE", 3000);
-      delay(1000);  // ← 종료 완료 대기
+      sendAT("AT+CIPCLOSE", 2000);
+      // delay(1000);  // ← 종료 완료 대기
     }
-    else
-    {
-      Serial.println("System already Off");
-    }
-    
+    else Serial.println("System Off");
   }
   preState = state;
 }
@@ -174,8 +161,6 @@ void getAirCondition() {
 
   int tempAqi = ens160.getAQI();
 
-  Serial.println(String("TEMP:") + temperature + ",HUMI:" + humidity + ",AQI:" + aqi + ",BRI:" + brightness + "\n");
-
   // 온도나 습도가 255면(오류 상태) 보내면 안됨
   if (((int)tempTemperature == 255) || ((int)tempHumidity == 255))
   {
@@ -201,16 +186,15 @@ void getAirCondition() {
 void getBrightness() {
   brightness = analogRead(A0);
 }
+
 void sendAT(String cmd, int timeout) {
   String res = "";
 
   if ((cmd == "AT") || (cmd.indexOf("AT+CWJAP") == 0) || (cmd == "AT+CIPCLOSE"))
   {
-    Serial.println("Basic command");
     while (1)
     {
       res = "";
-      Serial.println(">> " + cmd);
       espSerial.println(cmd);
       long start = millis();
       while (millis() - start < timeout)
@@ -222,10 +206,10 @@ void sendAT(String cmd, int timeout) {
       }
       if (res.indexOf("OK") != -1)
       {
-        Serial.println("OK sign >> " + res);
+        Serial.println("Sent >> " + cmd);
+        Serial.println(res);
         return;
       }
-      Serial.println(res);
     }
   }
   else if (cmd.indexOf("AT+CIPSTART") == 0)
@@ -235,7 +219,6 @@ void sendAT(String cmd, int timeout) {
     {
       Serial.println("Try to connect...");
       res = "";
-      Serial.println(">> " + cmd);
       espSerial.println(cmd);
       long start = millis();
       while (millis() - start < timeout)
@@ -247,7 +230,8 @@ void sendAT(String cmd, int timeout) {
       }
       if (res.indexOf("OK") != -1)
       {
-        Serial.println("OK sign >> " + res);
+        Serial.println("Sent >> " + cmd);
+        Serial.println(res);
         return;
       }
 
@@ -256,7 +240,6 @@ void sendAT(String cmd, int timeout) {
         state = !state;
         return;
       }
-      Serial.println(res);
     }
   }
   else
@@ -264,7 +247,6 @@ void sendAT(String cmd, int timeout) {
     while (1)
     {
       res = "";
-      Serial.println(">> " + cmd);
       espSerial.println(cmd);
       long start = millis();
       while (millis() - start < timeout)
@@ -274,21 +256,20 @@ void sendAT(String cmd, int timeout) {
           res += (char)espSerial.read();
         }
       }
-      if (res.indexOf("link is not" != -1))
+      if (res.indexOf("link is not") == -1)
       {
-        Serial.println("OK sign >> " + res);
+        Serial.println("Sent >> " + cmd);
+        Serial.println(res);
         return;
       }
-      Serial.println(res);
     }
-    
   }
 }
 
 void sendData(String cmd, int len) {
   // 전송 바이트 수
-  sendAT("AT+CIPSEND=" + String(len), 3000);
-  Serial.println(">> " + cmd);
+  sendAT("AT+CIPSEND=" + String(len), 2000);
+  Serial.println("Sent >> " + cmd);
   // 데이터 전송
   espSerial.print(cmd);
 }
