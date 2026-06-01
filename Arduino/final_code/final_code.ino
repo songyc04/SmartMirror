@@ -33,10 +33,10 @@ String on = "ON\n";
 String off = "OFF\n";
 
 // ⬇️ WIFI&TCP/IP settings
-const char* SSID = "사랑채";                // WIFI SSID
-const char* PASSWORD = "tkfkdco!";        // WIFI PASSWORD
-// const char* SERVER_IP = "192.168.0.2";    // Jetson Nano Server IP
-const char* SERVER_IP = "192.168.0.22";    // Test Server IP(Virtual Machine + Port Forwarding)
+const char* SSID = "abcd";                // WIFI SSID
+const char* PASSWORD = "abcdabcd";        // WIFI PASSWORD
+const char* SERVER_IP = "192.168.0.2";    // Jetson Nano Server IP
+// const char* SERVER_IP = "192.168.0.22";    // Test Server IP(Virtual Machine + Port Forwarding)
 const int SERVER_PORT = 9000;             // Server access PORT number\
 
 // Function declare
