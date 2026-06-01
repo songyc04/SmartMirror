@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <atomic>
+#include <unistd.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
