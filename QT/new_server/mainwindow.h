@@ -38,15 +38,16 @@ private:
     QTimer         *timer;
     QFrame         *blackOverlay;
     QWidget        *overlayWidget;
-    WeatherPanel *WeatherWidget;
+    WeatherPanel   *WeatherWidget;
 
     QTcpServer     *tcpServer;
     QTcpSocket     *tcpSocket;   // 현재 연결된 아두이노 소켓
 
     QProcess       *ytDlpProcess;
     QProcess       *mpvProcess;
+    QProcess       *emotionProcess;
 
-    NewsPanel *newsWidget;
+    NewsPanel      *newsWidget;
 
     void processData(const QString &data);
     void applyBrightness(int briVal);
