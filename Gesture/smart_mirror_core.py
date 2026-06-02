@@ -6,7 +6,7 @@ import threading
 from deepface import DeepFace
 
 # ── 네트워크 통신 및 글로벌 소켓 설정 ──
-TCP_IP = "127.0.0.1"      # 루프백(Localhost) 주소: 현재 PC 내부 통신용
+TCP_IP = "192.168.0.139"      # 루프백(Localhost) 주소: 현재 PC 내부 통신용
 TCP_PORT = 9001           # Qt 또는 ESP32 서버와 매칭할 포트 번호
 client_socket = None      # TCP 클라이언트 소켓 객체 저장용 전역 변수
 
