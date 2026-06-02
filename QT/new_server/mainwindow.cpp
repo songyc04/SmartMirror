@@ -11,6 +11,7 @@
 #include <QPropertyAnimation>
 
 const quint16 ARDUINO_PORT = 9000;
+const quint16 GESTURE_PORT = 9001;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), tcpSocket(nullptr), emotionProcess(nullptr)
@@ -34,6 +35,20 @@ MainWindow::MainWindow(QWidget *parent)
    }
 
    emotionProcess = new QProcess(this);
+   // ── TCP 9001 서버 시작 ──────
+   tcpServer9001 = new QTcpServer(this);
+   connect(tcpServer9001, &QTcpServer::newConnection,
+           this, &MainWindow::onNewGestureConnection);
+
+   if (!tcpServer9001->listen(QHostAddress::Any, GESTURE_PORT))
+   {
+      qWarning() << "9001 TCP 서버 시작 실패:" << tcpServer9001->errorString();
+   }
+   else
+   {
+      qDebug() << "9001 서버 대기 중 - 포트:" << GESTURE_PORT;
+   }
+
    // 파이썬 표준 출력(print) 가로채기
    connect(emotionProcess, &QProcess::readyReadStandardOutput, this, [this]() {
       QByteArray output = emotionProcess->readAllStandardOutput();
@@ -88,9 +103,9 @@ MainWindow::MainWindow(QWidget *parent)
    blackOverlay = new QFrame(ui->centralWidget);
    blackOverlay->setGeometry(ui->centralWidget->rect());
    blackOverlay->setStyleSheet("background-color:black;");
-   // blackOverlay->raise();
-   // blackOverlay->show(); // 시작할 때는 화면 켜진 상태
-   blackOverlay->hide();
+   blackOverlay->raise();
+   blackOverlay->show(); // 시작할 때는 화면 켜진 상태
+   //blackOverlay->hide();//테스트
 
    // weather panel(초기위치)
    WeatherWidget = new WeatherPanel(ui->centralWidget);
@@ -99,17 +114,17 @@ MainWindow::MainWindow(QWidget *parent)
        1200,
        800,
        500);
-   // WeatherWidget->hide();
+   WeatherWidget->hide();
    QTimer::singleShot(
        1000,
        this,
        [=]()
        {
-          // WeatherWidget->move(1080, 460);
-          // WeatherWidget->show();
-          // blackOverlay->raise();
-          blackOverlay->hide(); // 테스트1
-          showNewsPanel();      // 테스트2
+          WeatherWidget->move(1080, 460);
+          WeatherWidget->show();
+          blackOverlay->raise();
+          //blackOverlay->hide(); // 테스트1
+          //showNewsPanel();      // 테스트2
        });
 
    // gesture detected
@@ -196,6 +211,24 @@ void MainWindow::onNewConnection()
    qDebug() << "아두이노 연결됨:" << tcpSocket->peerAddress().toString();
 }
 
+// ── 새 9001 연결 ────────────────────────────
+void MainWindow::onNewGestureConnection()
+{
+   if (tcpSocket9001)
+   {
+      tcpSocket9001->disconnectFromHost();
+      tcpSocket9001->deleteLater();
+   }
+
+   tcpSocket9001 = tcpServer9001->nextPendingConnection();
+   connect(tcpSocket9001, &QTcpSocket::readyRead,
+           this, &MainWindow::onGestureDataReceived);
+   connect(tcpSocket9001, &QTcpSocket::disconnected,
+           this, &MainWindow::onGestureClientDisconnected);
+
+   qDebug() << "9001 연결됨:" << tcpSocket9001->peerAddress().toString();
+}
+
 // ── 데이터 수신 ─────────────────────────────────
 void MainWindow::onDataReceived()
 {
@@ -211,6 +244,21 @@ void MainWindow::onDataReceived()
    }
 }
 
+// ── 9001 데이터 수신 ─────────────────────────────────
+void MainWindow::onGestureDataReceived()
+{
+   if (!tcpSocket9001)
+      return;
+
+   while (tcpSocket9001->canReadLine())
+   {
+      QByteArray raw = tcpSocket9001->readLine();
+      QString data = QString::fromUtf8(raw).trimmed();
+      qDebug() << "9001 수신:" << data;
+      gestureDetected(data);
+   }
+}
+
 // ── 연결 종료 ───────────────────────────────────
 void MainWindow::onClientDisconnected()
 {
@@ -220,6 +268,18 @@ void MainWindow::onClientDisconnected()
    {
       tcpSocket->deleteLater();
       tcpSocket = nullptr;
+   }
+}
+
+// ── 9001 연결 종료 ───────────────────────────────────
+void MainWindow::onGestureClientDisconnected()
+{
+   qDebug() << "9001 연결 종료";
+   qDebug() << "9001 대기 중 - 포트:" << GESTURE_PORT;
+   if (tcpSocket9001)
+   {
+      tcpSocket9001->deleteLater();
+      tcpSocket9001 = nullptr;
    }
 }
 
@@ -274,12 +334,12 @@ void MainWindow::processData(const QString &data)
       }
       return;
    }
-   if (data == "SHOW_NEWS")
+   if (data == "SHOW_NEWS") //나중에 수정
    {
       showNewsPanel();
       return;
    }
-   if (data == "SHOW_WEATHER")
+   if (data == "SHOW_WEATHER")  //여기도 나중에 수정
    {
       showWeatherPanel();
       return;

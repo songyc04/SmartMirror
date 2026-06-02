@@ -31,6 +31,9 @@ private slots:
     void onNewConnection();
     void onDataReceived();
     void onClientDisconnected();
+    void onNewGestureConnection();
+    void onGestureDataReceived();
+    void onGestureClientDisconnected();
     void gestureDetected(const QString& gesture);
 
 private:
@@ -42,6 +45,8 @@ private:
 
     QTcpServer     *tcpServer;
     QTcpSocket     *tcpSocket;   // 현재 연결된 아두이노 소켓
+    QTcpServer     *tcpServer9001;
+    QTcpSocket     *tcpSocket9001;
 
     QProcess       *ytDlpProcess;
     QProcess       *mpvProcess;
