@@ -190,4 +190,92 @@ def main():
                 open_count = fingers_open.count(True)
 
                 is_open_hand = (open_count >= 3)   # 보자기 조건
-                is_fist_hand = (open_
+                is_fist_hand = (open_count == 0)   # 주먹 조건
+
+                # 1. 보자기 유지 감지 (재생 명령)
+                if is_open_hand:
+                    stop_hold_start_time = 0  
+                    stop_triggered = False
+                    if start_hold_start_time == 0:
+                        start_hold_start_time = now 
+                    elif now - start_hold_start_time >= HOLD_REQUIRED_TIME and not start_triggered:
+                        print("✋ [유지 감지] 1.5초간 보자기 유지 -> GESTURE:START 명령 전송", flush=True)
+                        broadcast_message("GESTURE:START")
+                        start_triggered = True 
+                        
+                # 2. 주먹 유지 감지 (멈춤 명령)
+                elif is_fist_hand:
+                    start_hold_start_time = 0 
+                    start_triggered = False
+                    if stop_hold_start_time == 0:
+                        stop_hold_start_time = now 
+                    elif now - stop_hold_start_time >= HOLD_REQUIRED_TIME and not stop_triggered:
+                        print("✊ [유지 감지] 1.5초간 주먹 유지 -> GESTURE:STOP 명령 전송", flush=True)
+                        broadcast_message("GESTURE:STOP")
+                        stop_triggered = True 
+                else:
+                    start_hold_start_time = 0
+                    stop_hold_start_time = 0
+                    start_triggered = False
+                    stop_triggered = False
+
+                # 손목 기준 좌표 추적 (동적 움직임 분석)
+                current_x = landmarks[0].x
+                current_y = landmarks[0].y
+
+                if prev_x != 0 and prev_y != 0:
+                    y_diff = current_y - prev_y 
+                    x_diff = current_x - prev_x 
+
+                    # 3. 상하 움직임 감지 (볼륨 제어)
+                    if now - last_volume_time > VOLUME_COOLDOWN:
+                        if y_diff < -0.08:  
+                            print("▲ [볼륨 업] VOLUME_UP", flush=True)
+                            broadcast_message("GESTURE:VOLUME_UP")
+                            last_volume_time = now
+                        elif y_diff > 0.08: 
+                            print("▼ [볼륨 다운] VOLUME_DOWN", flush=True)
+                            broadcast_message("GESTURE:VOLUME_DOWN")
+                            last_volume_time = now
+
+                    # 4. 좌우 쓸기 감지 (페이지 및 곡 스와이프)
+                    if now - last_swipe_time > SWIPE_COOLDOWN:
+                        if not swipe_locked:
+                            if x_diff < -0.14:   
+                                print("◀ [스와이프] 왼쪽으로 쓸기 -> GESTURE:NEXT", flush=True)
+                                broadcast_message("GESTURE:NEXT")
+                                last_swipe_time = now
+                                swipe_locked = True 
+                            elif x_diff > 0.14:  
+                                print("▶ [스와이프] 오른쪽으로 쓸기 -> GESTURE:PREV", flush=True)
+                                broadcast_message("GESTURE:PREV")
+                                last_swipe_time = now
+                                swipe_locked = True 
+                        else:
+                            if (x_diff > 0.05 or x_diff < -0.05):
+                                swipe_locked = False
+
+                prev_x = current_x
+                prev_y = current_y
+        else:
+            # 손 감지가 해제되면 내부 버퍼 상태 완전 초기화
+            prev_x, prev_y = 0, 0
+            swipe_locked = False
+            start_hold_start_time = 0
+            stop_hold_start_time = 0
+            start_triggered = False
+            stop_triggered = False
+
+        # CPU 점유율 과다 방지를 위한 미세 딜레이 조정
+        time.sleep(0.03)
+
+    # 프로그램 종료 시 안전하게 자원 회수
+    if arduino_socket:
+        arduino_socket.close()
+    if qt_udp_socket:
+        qt_udp_socket.close()
+    cap.release()
+    print("통합 엔진이 안전하게 종료되었습니다.", flush=True)
+
+if __name__ == "__main__":
+    main()
