@@ -147,7 +147,6 @@ void NewsPanel::onNewsReply(
         num->setStyleSheet(
             "font-size:28px;"
             "font-weight:bold;"
-            "color:#4da3ff;"
             "background:transparent;"
         );
 
@@ -171,7 +170,6 @@ void NewsPanel::onNewsReply(
         titleLabel->setStyleSheet(
             "font-size:16px;"
             "font-weight:bold;"
-            "color:white;"
             "background:transparent;"
         );
 
@@ -190,7 +188,6 @@ void NewsPanel::onNewsReply(
 
         descLabel->setStyleSheet(
             "font-size:11px;"
-            "color:#cccccc;"
             "background:transparent;"
         );
 
@@ -209,4 +206,19 @@ void NewsPanel::onNewsReply(
     }
 
     reply->deleteLater();
+}
+
+void NewsPanel::setTextBrightness(int value)
+{
+    QString color =
+        QString("rgb(%1,%1,%1)")
+            .arg(value);
+
+    this->setStyleSheet(
+        QString(
+            "QWidget {"
+            "background:rgba(20,20,20,230);"
+            "border-radius:25px;"
+            "color:%1;"
+            "}").arg(color));
 }

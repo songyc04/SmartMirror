@@ -16,6 +16,7 @@ class NewsPanel : public QWidget
 public:
     explicit NewsPanel(QWidget *parent = nullptr);
     ~NewsPanel();
+    void setTextBrightness(int value);
 
 private slots:
     void onNewsReply(QNetworkReply *reply);

@@ -40,7 +40,6 @@ private:
     Ui::MainWindow *ui;
     QTimer         *timer;
     QFrame         *blackOverlay;
-    QWidget        *overlayWidget;
     WeatherPanel   *WeatherWidget;
 
     QTcpServer     *tcpServer;

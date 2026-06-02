@@ -9,6 +9,8 @@
 #include <QGraphicsOpacityEffect>
 #include <QProcess>
 #include <QPropertyAnimation>
+#include <QPalette>
+#include <QColor>
 
 const quint16 ARDUINO_PORT = 9000;
 const quint16 GESTURE_PORT = 9001;
@@ -70,7 +72,7 @@ MainWindow::MainWindow(QWidget *parent)
    updateTime();
 
    // ── 전체 스타일 ────────────────────────────
-   this->setStyleSheet("background-color:#333;");
+   this->setStyleSheet("background-color:black;");
 
    ui->dateLabel->setStyleSheet(
        "color:white;"
@@ -87,17 +89,18 @@ MainWindow::MainWindow(QWidget *parent)
        "color:white;"
        "font-size:20pt;"
        "background:none;");
-   ui->lcdNumberTemp->setStyleSheet("color:lime; background:#111;");
-   ui->lcdNumberHumi->setStyleSheet("color:cyan; background:#111;");
 
-   // ── 밝기 오버레이 (UI 위에 올라가되 이벤트는 통과) ──
-   // centralWidget 기준으로 생성하여 menuBar/toolBar 제외
-   overlayWidget = new QWidget(ui->centralWidget);
-   overlayWidget->setGeometry(ui->centralWidget->rect());
-   overlayWidget->setAttribute(Qt::WA_TransparentForMouseEvents);
-   overlayWidget->setStyleSheet("background-color: rgba(0,0,0,0);");
-   overlayWidget->raise();
-   overlayWidget->show();
+   ui->lcdNumberTemp->setSegmentStyle(
+       QLCDNumber::Filled);
+
+   ui->lcdNumberHumi->setSegmentStyle(
+       QLCDNumber::Filled);
+
+   ui->lcdNumberTemp->setStyleSheet(
+       "background:#111;");
+
+   ui->lcdNumberHumi->setStyleSheet(
+       "background:#111;");
 
    // ── 화면 ON/OFF 오버레이 (맨 위) ──────────
    blackOverlay = new QFrame(ui->centralWidget);
@@ -286,25 +289,76 @@ void MainWindow::onGestureClientDisconnected()
 // ── 밝기 오버레이 적용 ──────────────────────────
 void MainWindow::applyBrightness(int briVal)
 {
-   if (briVal >= 0 && briVal <= 200)
-   {
-      // 어두움: 검은 오버레이
-      int alpha = ((200 - briVal) * 180) / 200;
-      overlayWidget->setStyleSheet(
-          QString("background-color: rgba(0,0,0,%1);").arg(alpha));
-   }
-   else if (briVal >= 201 && briVal <= 350)
-   {
-      // 적정 밝기: 오버레이 없음
-      overlayWidget->setStyleSheet("background-color: rgba(0,0,0,0);");
-   }
-   else
-   {
-      // 너무 밝음: 흰 오버레이
-      int alpha = qBound(0, ((briVal - 350) * 180) / 200, 180);
-      overlayWidget->setStyleSheet(
-          QString("background-color: rgba(255,255,255,%1);").arg(alpha));
-   }
+    // 0~550 범위를 80~255로 변환
+    int brightness = qBound(80, (briVal * 255) / 550, 255);
+
+    QString color =
+        QString("rgb(%1,%1,%1)")
+            .arg(brightness);
+
+    // 시계/날짜
+    ui->dateLabel->setStyleSheet(
+        QString(
+            "color:%1;"
+            "font-size:12pt;"
+            "font-weight:400;"
+            "background:none;")
+            .arg(color));
+
+    ui->timeLabel->setStyleSheet(
+        QString(
+            "color:%1;"
+            "font-size:45pt;"
+            "font-weight:bold;"
+            "margin-top:-5px;"
+            "background:none;")
+            .arg(color));
+
+    // AQI
+    ui->labelAQI->setStyleSheet(
+        QString(
+            "color:%1;"
+            "font-size:20pt;"
+            "background:none;"
+            "font-family:'Noto Color Emoji';")
+            .arg(color));
+
+    // 온도/습도 LCD
+    QColor lcdColor(
+        brightness,
+        brightness,
+        brightness);
+
+    QPalette tempPalette =
+        ui->lcdNumberTemp->palette();
+
+    tempPalette.setColor(
+        QPalette::Light,
+        lcdColor);
+
+    tempPalette.setColor(
+        QPalette::Dark,
+        lcdColor.darker());
+
+    ui->lcdNumberTemp->setPalette(
+        tempPalette);
+
+    QPalette humiPalette =
+        ui->lcdNumberHumi->palette();
+
+    humiPalette.setColor(
+        QPalette::Light,
+        lcdColor);
+
+    humiPalette.setColor(
+        QPalette::Dark,
+        lcdColor.darker());
+
+    ui->lcdNumberHumi->setPalette(
+        humiPalette);
+
+    WeatherWidget->setTextBrightness(brightness);
+    newsWidget->setTextBrightness(brightness);
 }
 
 // ── 데이터 파싱 및 UI 업데이트 ──────────────────
@@ -326,7 +380,7 @@ void MainWindow::processData(const QString &data)
           emotionProcess->setWorkingDirectory("/home/jt-user/SmartMirror/opencv");
          QString pythonExecutable = "/home/jt-user/deepface_env/bin/python3"; // 윈도우 환경 환경인 경우 "python"으로 변경 가능
          QStringList arguments;
-         
+
          // ⚠️ 실행하고자 하는 파이썬 스크립트의 '절대 경로'를 정확하게 입력해 주세요.
          arguments << "opencv.py";
 
@@ -375,19 +429,19 @@ void MainWindow::processData(const QString &data)
       switch (aqiVal)
       {
       case 1:
-         emoji = "🙂";
+         emoji = "좋음";
          break;
       case 2:
-         emoji = "😐";
+         emoji = "보통";
          break;
       case 3:
-         emoji = "😷";
+         emoji = "나쁨";
          break;
       case 4:
-         emoji = "☠️";
+         emoji = "위험";
          break;
       case 5:
-         emoji = "😀";
+         emoji = "죽음";
          break;
       default:
          emoji = "오류";
@@ -425,8 +479,8 @@ void MainWindow::resizeEvent(QResizeEvent *event)
    QMainWindow::resizeEvent(event);
    if (blackOverlay)
       blackOverlay->setGeometry(ui->centralWidget->rect());
-   if (overlayWidget)
-      overlayWidget->setGeometry(ui->centralWidget->rect());
+   /*if (overlayWidget)
+      overlayWidget->setGeometry(ui->centralWidget->rect());*/
 }
 
 // ── 제스처 수신 처리 ────────────────────────────

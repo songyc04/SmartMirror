@@ -16,6 +16,7 @@ class WeatherPanel : public QWidget
 public:
     explicit WeatherPanel(QWidget *parent = nullptr);
     ~WeatherPanel();
+    void setTextBrightness(int value);
 
 private slots:
     void onWeatherReply(

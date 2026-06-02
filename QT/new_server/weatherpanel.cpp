@@ -44,7 +44,6 @@ WeatherPanel::WeatherPanel(QWidget *parent)
     ui->labelLocation->setStyleSheet(
         "font-size:24px;"
         "font-weight:bold;"
-        "color:white;"
         "background:transparent;"
         "border:none;"
     );
@@ -58,21 +57,18 @@ WeatherPanel::WeatherPanel(QWidget *parent)
     ui->labelTemp->setStyleSheet(
         "font-size:58px;"
         "font-weight:bold;"
-        "color:white;"
         "background:transparent;"
         "border:none;"
     );
 
     ui->labelWeather->setStyleSheet(
         "font-size:32px;"
-        "color:white;"
         "background:transparent;"
         "border:none;"
     );
 
     ui->labelDetail->setStyleSheet(
         "font-size:18px;"
-        "color:white;"
         "background:transparent;"
         "border:none;"
     );
@@ -134,7 +130,6 @@ WeatherPanel::WeatherPanel(QWidget *parent)
         "background:transparent;"
         "border:none;"
         "font-size:20px;"
-        "color:white;"
         "}"
         "QTableWidget::item {"
         "border:none;"
@@ -148,7 +143,6 @@ WeatherPanel::WeatherPanel(QWidget *parent)
             "border:none;"
             "font-size:16px;"
             "font-weight:bold;"
-            "color:white;"
             "}");
 
     // Row Height
@@ -471,4 +465,72 @@ QString WeatherPanel::koreanCityName(
     QString city)
 {
     return city;
+}
+
+void WeatherPanel::setTextBrightness(int value)
+{
+    QString color =
+        QString("rgb(%1,%1,%1)")
+            .arg(value);
+
+    this->setStyleSheet(
+        QString(
+            "QWidget {"
+            "background:rgba(30,30,30,220);"
+            "border:2px solid %1;"
+            "border-radius:20px;"
+            "color:%1;"
+            "}").arg(color));
+
+    QColor textColor(value, value, value);
+
+    for(int row = 0; row < ui->tableForecast->rowCount(); row++)
+    {
+        for(int col = 0; col < ui->tableForecast->columnCount(); col++)
+        {
+            QTableWidgetItem *item =
+                ui->tableForecast->item(row, col);
+
+            if(item)
+                continue;
+
+            // 날씨 아이콘 행
+                   if(row == 0)
+                   {
+                       item->setForeground(
+                           QColor(value,
+                                  value,
+                                  value));
+                   }
+
+                   // 최고 온도
+                   else if(row == 1)
+                   {
+                       item->setForeground(
+                           QColor(
+                               qMin(value + 80, 255),
+                               80,
+                               80));
+                   }
+
+                   // 최저 온도
+                   else if(row == 2)
+                   {
+                       item->setForeground(
+                           QColor(
+                               80,
+                               160,
+                               qMin(value + 80, 255)));
+                   }
+        }
+    }
+
+    for(int col = 0; col < ui->tableForecast->columnCount(); col++)
+    {
+        QTableWidgetItem *header =
+            ui->tableForecast->horizontalHeaderItem(col);
+
+        if(header)
+            header->setForeground(textColor);
+    }
 }
