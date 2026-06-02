@@ -1,196 +1,256 @@
-#include <iostream>
-#include <string>
-#include <cstring>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <thread>
-#include <atomic>
-#include "gesture_recognition.hpp"
+import cv2
+import mediapipe as mp
+import socket
+import time
+import threading
+from deepface import DeepFace
 
-const int PORT        = 9000; // 아두이노 TCP 포트
-const int QT_PORT     = 9001; // Qt UDP 포트
-const int BUFFER_SIZE = 1024;
+TCP_IP = "192.168.0.139"      
+ARDUINO_PORT = 9000       # 아두이노 TCP 서버 포트
+QT_PORT = 9001            # C++ Qt UDP 포트 (UDP로 변경)
 
-// 전역 공유 리소스 및 스레드 제어 플래그
-std::atomic<bool> g_running(true);
-int g_qt_udp_sock = -1;
-sockaddr_in g_qt_addr{};
+arduino_socket = None     # 아두이노용 TCP 소켓 변수
+qt_udp_socket = None      # Qt용 UDP 소켓 변수 (글로벌 생성)
 
-// 수신 데이터 파싱 및 템플릿 터미널 출력 함수 (기존 유지)
-void printParsed(const std::string& data) {
-    std::string temp_val = "?";
-    std::string humi_val = "?";
+# ── 상태 관리 플래그 ──
+arduino_connected = False
+initial_scan_done = False
+scan_start_time = 0
 
-    size_t t_pos = data.find("TEMP:");
-    size_t h_pos = data.find(",HUMI:");
-
-    if (t_pos != std::string::npos && h_pos != std::string::npos) {
-        temp_val = data.substr(t_pos + 5, h_pos - (t_pos + 5));
-    }
-    if (h_pos != std::string::npos) {
-        humi_val = data.substr(h_pos + 6);
-        humi_val.erase(humi_val.find_last_not_of(" \n\r\t") + 1);
-    }
-
-    std::cout << "┌─────────────────────────┐\n";
-    std::cout << "│  온도: " << temp_val << " °C\n";
-    std::cout << "│  습도: " << humi_val << " %\n";
-    std::cout << "└─────────────────────────┘\n";
+# ── 감정별 맞춤 노래 맵핑 ──
+MUSIC_MAP = {
+    "happy": "신나는 댄스곡",
+    "sad": "잔잔한 위로의 발라드",
+    "angry": "스트레스가 풀리는 록/힙합",
+    "surprise": "통통 튀는 팝송",
+    "neutral": "마음이 편안해지는 어쿠스틱/재즈",
+    "fear": "차분한 클래식",
+    "disgust": "기분 전환용 트로피컬 하우스"
 }
 
-// [스레드 함수] OpenCV를 구동하여 제스처를 감지하고 Qt로 직접 UDP를 전송하는 루프
-void opencv_gesture_worker() {
-    std::cout << "[OpenCV 스레드] 제스처 감지 스레드가 시작되었습니다.\n";
+# [TCP] 아두이노 서버 자동 재연결 로직
+def connect_to_arduino():
+    global arduino_socket, arduino_connected, initial_scan_done, scan_start_time
+    while True:
+        try:
+            if arduino_socket is None:
+                print(f"🔄 아두이노(ESP32) TCP 서버 연결 시도 중 ({TCP_IP}:{ARDUINO_PORT})...")
+                arduino_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                # 아두이노가 타임아웃으로 블로킹되지 않도록 설정
+                arduino_socket.settimeout(3.0)
+                arduino_socket.connect((TCP_IP, ARDUINO_PORT))
+                print("✅ 아두이노(ESP32) TCP 서버와 연결 성공!")
+                
+                arduino_connected = True
+                initial_scan_done = False 
+                scan_start_time = 0
+                break
+        except Exception as e:
+            print(f"❌ 아두이노 연결 실패 ({e}). 2초 후 재시도합니다.")
+            arduino_socket = None
+            arduino_connected = False
+            time.sleep(2)
 
- // 일반 USB 웹캠 주소(/dev/video0)로 직접 접근하여 비디오 캡처 객체 생성
-  cv::VideoCapture cap(0, cv::CAP_V4L2);
+# [UDP] C++ Qt용 UDP 소켓 초기화 로직 (UDP는 연결 과정이 필요 없습니다)
+def init_qt_udp():
+    global qt_udp_socket
+    try:
+        # SOCK_DGRAM 이 UDP 통신을 뜻합니다.
+        qt_udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        print(f"✅ C++ Qt UDP 송신 준비 완료 (목적지 -> {TCP_IP}:{QT_PORT})")
+    except Exception as e:
+        print(f"❌ Qt UDP 소켓 생성 실패: {e}")
+
+# ── [함수] 양쪽 서버(TCP / UDP)에 메시지를 동시 송신하는 로직 ──
+def broadcast_tcp_message(message):
+    global arduino_socket, qt_udp_socket, arduino_connected
+    full_msg = message + "\n"
+    encoded_msg = full_msg.encode('utf-8')
     
-    if (!cap.isOpened()) {
-        std::cerr << "[OpenCV 에러] 카메라를 열 수 없습니다. USB 웹캠 사용 시 인덱스 0으로 재시도합니다...\n";
-        cap.open(0);
-        if(!cap.isOpened()) {
-            std::cerr << "[OpenCV 치명적 에러] 모든 카메라 연결 실패.\n";
-            return;
-        }
-    }
+    # 1. 아두이노 (TCP 전송)
+    if arduino_socket is not None:
+        try:
+            arduino_socket.sendall(encoded_msg)
+        except Exception as e:
+            print(f"❌ 아두이노 TCP 전송 실패 ({e}). 재연결을 가동합니다.")
+            arduino_socket = None
+            arduino_connected = False
+            threading.Thread(target=connect_to_arduino, daemon=True).start()
+            
+    # 2. C++ Qt (UDP 전송 - 연결 체크 없이 바로 목적지로 데이터 슛)
+    if qt_udp_socket is not None:
+        try:
+            qt_udp_socket.sendto(encoded_msg, (TCP_IP, QT_PORT))
+        except Exception as e:
+            print(f"❌ C++ Qt UDP 전송 실패 ({e})")
 
-    // 해상도 안전장치 및 최적화 세팅
-    cap.set(cv::CAP_PROP_FRAME_WIDTH,  640);
-    cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
-    cap.set(cv::CAP_PROP_FPS, 30);
+SWIPE_COOLDOWN = 1.5       
+VOLUME_COOLDOWN = 0.2      
+HOLD_REQUIRED_TIME = 1.5   
 
-    GestureRecognizer recognizer;
-    recognizer.setSensitivity(1.0f);
-    recognizer.setCooldown(800);
-
-    // 제스처 감지 시 실행될 람다 콜백 함수 등록
-    recognizer.setGestureCallback([](GestureType g, float confidence) {
-        std::string gesture_msg = "";
-        switch (g) {
-            case GestureType::SWIPE_LEFT:  gesture_msg = "GESTURE:SWIPE_LEFT";  break;
-            case GestureType::SWIPE_RIGHT: gesture_msg = "GESTURE:SWIPE_RIGHT"; break;
-            case GestureType::SWIPE_UP:    gesture_msg = "GESTURE:SWIPE_UP";    break;
-            case GestureType::SWIPE_DOWN:  gesture_msg = "GESTURE:SWIPE_DOWN";  break;
-            case GestureType::HAND_OPEN:   gesture_msg = "GESTURE:HAND_OPEN";   break;
-            case GestureType::HAND_FIST:   gesture_msg = "GESTURE:HAND_FIST";   break;
-            default: return;
-        }
-
-        // 즉각 Qt UI가 듣고 있는 UDP 포트로 문자열 메시지 전송
-        if (g_qt_udp_sock != -1) {
-            sendto(g_qt_udp_sock, gesture_msg.c_str(), gesture_msg.length(), 0,
-                   (sockaddr*)&g_qt_addr, sizeof(g_qt_addr));
-            std::cout << "[UDP 전송 - 제스처] Qt UI -> " << gesture_msg << "\n";
-        }
-    });
-
-    cv::Mat frame;
-    while (g_running) {
-        cap >> frame;
-        if (frame.empty()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            continue;
-        }
-
-        // 거울 모드 좌우 반전
-        cv::flip(frame, frame, 1);
-
-        // 프레임 처리 (내부에서 인식 시 등록한 콜백 함수가 자동 호출됨)
-        recognizer.processFrame(frame);
-
-        // 원격 SSH 등 GUI 모니터가 없는 환경에서의 오버헤드 방지를 위해 imshow는 비활성화
-        // cv::imshow("Server Camera Debug", frame);
-        // if (cv::waitKey(1) == 'q') break;
+# ── [함수] 최초 1회 감정 스캔 후 노래 재생 명령 전송 ──
+def analyze_emotion_and_play(frame):
+    try:
+        print("\n🎯 [DeepFace] 5초 경과! 사용자의 표정을 분석합니다...")
+        small_frame = cv2.resize(frame, (320, 240))
+        analysis = DeepFace.analyze(img_path=small_frame, actions=['emotion'], enforce_detection=False)
         
-        // 연산량 제어를 위한 미세한 휴식
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-
-    cap.release();
-    std::cout << "[OpenCV 스레드] 제스처 감지 스레드가 안전하게 종료되었습니다.\n";
-}
-
-int main() {
-    // 1. TCP 서버 소켓 생성
-    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd < 0) {
-        perror("socket 생성 실패");
-        return 1;
-    }
-
-    int opt = 1;
-    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-    sockaddr_in addr{};
-    addr.sin_family      = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port        = htons(PORT);
-
-    if (bind(server_fd, (sockaddr*)&addr, sizeof(addr)) < 0) {
-        perror("bind 실패");
-        close(server_fd);
-        return 1;
-    }
-
-    listen(server_fd, 5);
-
-    // 2. Qt 전송용 UDP 소켓 생성 및 전역 설정
-    g_qt_udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
-    g_qt_addr.sin_family = AF_INET;
-    g_qt_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    g_qt_addr.sin_port = htons(QT_PORT);
-
-    std::cout << "[메인 서버] 아두이노 대기 포트: " << PORT << ", Qt UDP 대상 포트: " << QT_PORT << "\n";
-
-    // 3. OpenCV 제스처 감지 워커 스레드 가동
-    std::thread opencv_thread(opencv_gesture_worker);
-
-    // 4. 메인 대기/수신 루프 (기존 아두이노 대응 로직 유지)
-    while (g_running) {
-        sockaddr_in client_addr{};
-        socklen_t client_len = sizeof(client_addr);
+        if isinstance(analysis, list):
+            analysis = analysis[0]
+            
+        emotion = analysis["dominant_emotion"] 
+        recommended_song = MUSIC_MAP.get(emotion, "랜덤 추천 음악")
         
-        int conn_fd = accept(server_fd, (sockaddr*)&client_addr, &client_len);
-        if (conn_fd < 0) {
-            if (!g_running) break;
-            perror("accept 실패");
-            continue;
-        }
+        print(f"✨ 분석된 감정: [{emotion}] -> 추천 음악: [{recommended_song}]")
 
-        char client_ip[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
-        std::cout << "\n[메인 서버] 아두이노 연결됨: " << client_ip << "\n";
+        # 양측 호스트에 결과 전달
+        broadcast_tcp_message(f"EMOTION_RESULT:{emotion}")
+        broadcast_tcp_message(f"PLAY_SONG:{recommended_song}")
 
-        char buffer[BUFFER_SIZE];
-        while (g_running) {
-            memset(buffer, 0, sizeof(buffer));
-            ssize_t bytes = recv(conn_fd, buffer, sizeof(buffer) - 1, 0);
-            if (bytes <= 0) {
-                std::cout << "[메인 서버] 아두이노 연결 종료\n";
-                break;
-            }
+    except Exception as e:
+        print(f"❌ DeepFace 분석 중 오류 발생: {e}")
 
-            std::string received(buffer);
-            std::cout << "[메인 서버] 아두이노 데이터 수신: " << received << "\n";
+def main():
+    # 아두이노는 백그라운드에서 TCP 연결 시도
+    threading.Thread(target=connect_to_arduino, daemon=True).start()
+    # Qt는 UDP이므로 즉시 소켓 개방
+    init_qt_udp()
 
-            // 파싱 결과 출력
-            printParsed(received);
+    mp_hands = mp.solutions.hands
+    hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.7, min_tracking_confidence=0.7)
 
-            // Qt 프로그램으로 센서 데이터 전송
-            sendto(g_qt_udp_sock, buffer, bytes, 0, (sockaddr*)&g_qt_addr, sizeof(g_qt_addr));
-        }
-        close(conn_fd);
-    }
+    cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-    // 5. 프로세스 정리 및 자원 반환
-    g_running = false;
-    if (opencv_thread.joinable()) {
-        opencv_thread.join();
-    }
+    last_swipe_time = 0
+    last_volume_time = 0
+    prev_x, prev_y = 0, 0       
+    swipe_locked = False        
 
-    close(g_qt_udp_sock);
-    close(server_fd);
-    std::cout << "[메인 서버] 프로세스가 종료되었습니다.\n";
-    return 0;
-}
+    start_hold_start_time = 0   
+    stop_hold_start_time = 0    
+    start_triggered = False     
+    stop_triggered = False      
+
+    global arduino_connected, initial_scan_done, scan_start_time
+
+    print(f"\n🚀 [하이브리드 AI 엔진] 가동 완료. 아두이노(TCP) 및 Qt(UDP) 연동 시작...")
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            time.sleep(0.01)
+            continue
+
+        frame = cv2.flip(frame, 1) 
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) 
+        
+        now = time.time() 
+
+        # ── [연결 이벤트] 아두이노 연결 시 최초 1회 5초 대기 후 표정 인식 ──
+        if arduino_connected and not initial_scan_done:
+            if scan_start_time == 0:
+                scan_start_time = now
+                print("\n⏳ [이벤트] 아두이노가 연결되었습니다! 거울을 보고 표정을 지어주세요. 5초 뒤 노래가 추천됩니다...")
+            elif now - scan_start_time >= 5.0:
+                print("📸 찰칵! 표정 데이터를 캡처했습니다.")
+                threading.Thread(target=analyze_emotion_and_play, args=(frame.copy(),), daemon=True).start()
+                initial_scan_done = True 
+
+        # ── 제스처 인식 루프 ──
+        results = hands.process(rgb_frame) 
+
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
+                landmarks = hand_landmarks.landmark
+                
+                fingers_open = []
+                for tip, pip in [(8, 6), (12, 10), (16, 14), (20, 18)]: 
+                    if landmarks[tip].y < landmarks[pip].y:
+                        fingers_open.append(True)  
+                    else:
+                        fingers_open.append(False) 
+                open_count = fingers_open.count(True)
+
+                is_open_hand = (open_count >= 3) 
+                is_fist_hand = (open_count == 0) 
+
+                if is_open_hand:
+                    stop_hold_start_time = 0  
+                    stop_triggered = False
+                    if start_hold_start_time == 0:
+                        start_hold_start_time = now 
+                    elif now - start_hold_start_time >= HOLD_REQUIRED_TIME and not start_triggered:
+                        print("✋ [유지 감지] 1.5초간 보자기 유지 -> 재생(START)")
+                        broadcast_tcp_message("GESTURE:START")
+                        start_triggered = True 
+                        
+                elif is_fist_hand:
+                    start_hold_start_time = 0 
+                    start_triggered = False
+                    if stop_hold_start_time == 0:
+                        stop_hold_start_time = now 
+                    elif now - stop_hold_start_time >= HOLD_REQUIRED_TIME and not stop_triggered:
+                        print("✊ [유지 감지] 1.5초간 주먹 유지 -> 멈춤(STOP)")
+                        broadcast_tcp_message("GESTURE:STOP")
+                        stop_triggered = True 
+                else:
+                    start_hold_start_time = 0
+                    stop_hold_start_time = 0
+                    start_triggered = False
+                    stop_triggered = False
+
+                current_x = landmarks[0].x
+                current_y = landmarks[0].y
+
+                if prev_x != 0 and prev_y != 0:
+                    y_diff = current_y - prev_y 
+                    x_diff = current_x - prev_x 
+
+                    if now - last_volume_time > VOLUME_COOLDOWN:
+                        if y_diff < -0.08:  
+                            print("▲ [볼륨 업] VOLUME_UP")
+                            broadcast_tcp_message("GESTURE:VOLUME_UP")
+                            last_volume_time = now
+                        elif y_diff > 0.08: 
+                            print("▼ [볼륨 다운] VOLUME_DOWN")
+                            broadcast_tcp_message("GESTURE:VOLUME_DOWN")
+                            last_volume_time = now
+
+                    if now - last_swipe_time > SWIPE_COOLDOWN:
+                        if not swipe_locked:
+                            if x_diff < -0.14:   
+                                print("◀ [스와이프] 왼쪽 -> 다음 페이지(NEXT)")
+                                broadcast_tcp_message("GESTURE:NEXT")
+                                last_swipe_time = now
+                                swipe_locked = True 
+                            elif x_diff > 0.14:  
+                                print("▶ [스와이프] 오른쪽 -> 이전 페이지(PREV)")
+                                broadcast_tcp_message("GESTURE:PREV")
+                                last_swipe_time = now
+                                swipe_locked = True 
+                        else:
+                            if (x_diff > 0.05 or x_diff < -0.05):
+                                swipe_locked = False
+
+                prev_x = current_x
+                prev_y = current_y
+        else:
+            prev_x, prev_y = 0, 0
+            swipe_locked = False
+            start_hold_start_time = 0
+            stop_hold_start_time = 0
+            start_triggered = False
+            stop_triggered = False
+
+        time.sleep(0.03)
+
+    if arduino_socket:
+        arduino_socket.close()
+    if qt_udp_socket:
+        qt_udp_socket.close()
+    cap.release()
+
+if __name__ == "__main__":
+    main()
