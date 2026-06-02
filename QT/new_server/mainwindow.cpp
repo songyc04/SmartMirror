@@ -323,11 +323,11 @@ void MainWindow::processData(const QString &data)
       waitingData = true;
       // [수정] ON 수신 시 중복 실행 상태가 아니라면 파이썬 스크립트를 비동기로 호출합니다.
       if (emotionProcess && emotionProcess->state() == QProcess::NotRunning) {
-         QString pythonExecutable = "python"; // 윈도우 환경 환경인 경우 "python"으로 변경 가능
+         QString pythonExecutable = "python "; // 윈도우 환경 환경인 경우 "python"으로 변경 가능
          QStringList arguments;
          
          // ⚠️ 실행하고자 하는 파이썬 스크립트의 '절대 경로'를 정확하게 입력해 주세요.
-         arguments << "/home/jt-user/SmartMirror/opencv/opencv.py"; 
+         arguments << "/home/jt-user/SmartMirror/opencv/opencv.py";
 
          emotionProcess->start(pythonExecutable, arguments);
          qDebug() << "아두이노 ON: 파이썬 감정 분석 스크립트를 시작합니다.";
