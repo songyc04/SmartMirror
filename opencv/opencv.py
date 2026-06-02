@@ -11,8 +11,7 @@ TCP_PORT = 9001       # 연결할 Qt의 TCP 포트 번호
 def analyze_emotion():
    finalData = ""
    # 리눅스 환경 카메라 백엔드 유지
-   # cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
-   cap = cv2.VideoCapture(0)
+   cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
    if not cap.isOpened():
       print("PYTHON_ERROR: Cannot open camera")
       sys.exit(1)
