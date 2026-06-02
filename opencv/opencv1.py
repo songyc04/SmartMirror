@@ -7,7 +7,7 @@ import threading
 from deepface import DeepFace
 
 # ── 네트워크 설정 (수정된 스펙 반영) ──────────────────────────
-TCP_IP = "192.168.0.139"      # 대상 IP 주소
+TCP_IP = "127.0.0.1"      # 대상 IP 주소
 ARDUINO_PORT = 9000           # 아두이노 TCP 서버 포트
 QT_PORT = 9001                # C++ Qt UDP 포트
 
