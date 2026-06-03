@@ -33,10 +33,10 @@ String on = "ON\n";
 String off = "OFF\n";
 
 // ⬇️ WIFI&TCP/IP settings
-const char* SSID = "fusion";                // WIFI SSID
-const char* PASSWORD = "12345678";        // WIFI PASSWORD
-const char* SERVER_IP = "192.168.0.134";    // Jetson Nano Server IP
-// const char* SERVER_IP = "192.168.0.22";    // Test Server IP(Virtual Machine + Port Forwarding)
+const char* SSID = "사랑채";                // WIFI SSID
+const char* PASSWORD = "tkfkdco!";        // WIFI PASSWORD
+// const char* SERVER_IP = "192.168.0.134";    // Jetson Nano Server IP
+const char* SERVER_IP = "192.168.0.22";    // Test Server IP(Virtual Machine + Port Forwarding)
 const int SERVER_PORT = 9000;             // Server access PORT number\
 
 // Function declare
@@ -55,6 +55,7 @@ void setup() {
   ens160.begin();             // ENS160 begin
   Wire.begin();               // Wire begin
   ens160.setOperatingMode(SFE_ENS160_STANDARD);
+  Serial.println("Start Arduino");
 
   // 최초 Wifi 연결
   sendAT("AT", 1500);                                                               // ESP8266 상태 확인
@@ -100,7 +101,8 @@ void loop() {
       getAirCondition();
       while ((temperature < 10.0) || (temperature > 40.0) || (humidity > 100.0) || (humidity == 0.0) || (aqi == 0))
       {
-        // payload = String("TEMP:") + temperature + ",HUMI:" + humidity + ",AQI:" + aqi + ",BRI:" + brightness + "\n";
+        payload = String("TEMP:") + temperature + ",HUMI:" + humidity + ",AQI:" + aqi + ",BRI:" + brightness + "\n";
+        Serial.println(payload);
         getAirCondition();
       }
       
@@ -135,6 +137,7 @@ void loop() {
     else Serial.println("System Off");
   }
   preState = state;
+  delay(2000);
 }
 
 void getDistance() {
@@ -161,8 +164,8 @@ void getAirCondition() {
 
   int tempAqi = ens160.getAQI();
 
-  // 온도나 습도가 255면(오류 상태) 보내면 안됨
-  if (((int)tempTemperature == 255) || ((int)tempHumidity == 255))
+  // 온도나 습도가 255거나(오류 상태), 습도가 100이거나(잘못 인식했을 가능성), AQI가 0이면 보내면 안 됨
+  if (((int)tempTemperature == 255) || ((int)tempHumidity == 255) || ((int)tempHumidity == 100) || (tempAqi == 0))
   {
     isDiff = false;
     return;
