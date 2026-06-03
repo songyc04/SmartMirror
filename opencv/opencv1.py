@@ -69,7 +69,7 @@ def analyze_emotion_and_play(frame):
         print("\n🎯 [DeepFace] 사용자의 표정을 분석합니다...", flush=True)
         # Jetson Nano 부하 경감을 위한 프레임 축소 및 분석 가속화
         small_frame = cv2.resize(frame, (320, 240))
-        analysis = DeepFace.analyze(img_path=small_frame, actions=['emotion'], model_name='Facenet', enforce_detection=False)
+        analysis = DeepFace.analyze(img_path=small_frame, actions=['emotion'], enforce_detection=False)
         
         if isinstance(analysis, list):
             analysis = analysis[0]
@@ -96,7 +96,7 @@ def main():
 
     # ── 카메라 장치 탐색 방어 코드 ──
     cap = None
-    for cam_idx in [0, 1, 2]:
+    for cam_idx in range(10):
         print(f"📷 카메라 인덱스 [{cam_idx}]번 오픈 시도 중...", flush=True)
         cap = cv2.VideoCapture(cam_idx, cv2.CAP_V4L2)
         if cap.isOpened():
