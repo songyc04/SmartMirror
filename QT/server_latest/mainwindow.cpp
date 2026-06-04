@@ -323,22 +323,26 @@ void MainWindow::processData(const QString &data)
 
     if (data == "ON")
     {
-        waitingData = true;
         if (emotionProcess && emotionProcess->state() == QProcess::NotRunning) {
             emotionProcess->setWorkingDirectory("/home/jt-user/SmartMirror/opencv");
 
             QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-            if (!env.contains("DISPLAY")) { // 기존 contains 문법 오류 수정 (env.contains)
-                env.insert("DISPLAY", ":0");
-            }
+            // 기존: contains 체크 후 삽입 → 이미 잘못된 DISPLAY일 수도 있음
+            // 수정: 무조건 덮어쓰기
+            env.insert("DISPLAY", ":0");
+            env.insert("XAUTHORITY", "/home/jt-user/.Xauthority"); // ← 추가
             emotionProcess->setProcessEnvironment(env);
 
-            QString pythonExecutable = "/home/jt-user/deepface_env/bin/python3";
-            QStringList arguments;
-            arguments << "opencv_latest.py";
+            // 프로세스 크래시가 Qt에 전파되지 않도록 에러 시그널 연결
+            connect(emotionProcess, &QProcess::errorOccurred,
+                    this, [](QProcess::ProcessError error) {
+                qWarning() << "파이썬 프로세스 오류 발생:" << error;
+                // Qt는 계속 살아있음
+            });
 
-            emotionProcess->start(pythonExecutable, arguments);
-            qDebug() << "아두이노 ON: 디스플레이 권한과 함께 파이썬 감정 분석 스크립트를 시작합니다.";
+            emotionProcess->start("/home/jt-user/deepface_env/bin/python3",
+                                  QStringList() << "opencv_latest.py");
+            qDebug() << "아두이노 ON: 파이썬 감정 분석 스크립트를 시작합니다.";
         }
         return;
     }

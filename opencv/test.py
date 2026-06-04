@@ -59,8 +59,8 @@ def send_to_qt(message):
             threading.Thread(target=connect_to_qt, daemon=True).start()
 
 # ── 제스처 쿨다운 및 타이머 설정 ──
-SWIPE_COOLDOWN = 1.5       
-VOLUME_COOLDOWN = 0.2      
+SWIPE_COOLDOWN = 1.2       # 스와이프 연속 트리거 방지 (조금 더 부드럽게 감도 상향)
+VOLUME_COOLDOWN = 0.15     # 볼륨 조절 반응 속도 상향
 HOLD_REQUIRED_TIME = 1.5   
 
 # ── [AI 기능] 감정 스캔 및 결과 전송 함수 ──
@@ -94,7 +94,7 @@ gesture_running = True
 def gesture_processing_thread(hands):
     global latest_rgb_frame, gesture_running, qt_connected
     
-    # 제스처 상태 변수들
+    # 제스처 위치 추적용 독립 변수
     last_swipe_time = 0
     last_volume_time = 0
     prev_x, prev_y = 0, 0       
@@ -128,7 +128,9 @@ def gesture_processing_thread(hands):
             for hand_landmarks in results.multi_hand_landmarks:
                 landmarks = hand_landmarks.landmark
                 
-                # 1. 네 손가락(검지, 중지, 약지, 새끼)의 펴짐 상태 확인
+                # -------------------------------------------------------------
+                # 1. 독립 파트 A: 손가락 개수 기반 제스처 판정 로직
+                # -------------------------------------------------------------
                 base_fingers_open = []
                 for tip, pip in [(8, 6), (12, 10), (16, 14), (20, 18)]: 
                     if landmarks[tip].y < landmarks[pip].y:
@@ -136,35 +138,25 @@ def gesture_processing_thread(hands):
                     else:
                         base_fingers_open.append(False) 
                 
-                # 4개의 주요 손가락 중 펴진 개수 계산
                 four_fingers_count = base_fingers_open.count(True)
 
-                # 2. 💡 [이중 방어 필터 적용] 엄지 오인식 완벽 차단
-                # 조건 A: 네 손가락이 전부 접혔다 -> 엄지 무시하고 무조건 0개 (주먹: END)
+                # 엄지 오인식 방지 이중 필터링 적용
                 if four_fingers_count == 0:
                     open_count = 0
-                
-                # 조건 B: 검지/중지/약지/새끼 중 정확히 '하나'만 펴졌다 -> 엄지 상태가 어떻든 무조건 1개 (STOP)
                 elif four_fingers_count == 1:
                     open_count = 1
-                    
-                # 조건 C: 손을 애매하게 폈거나 전부 다 폈을 때만 엄지 상태를 정밀 합산
                 else:
                     thumb_open = landmarks[4].y < landmarks[2].y or abs(landmarks[4].x - landmarks[2].x) > 0.05
                     open_count = four_fingers_count + (1 if thumb_open else 0)
 
-                # 3. 보정된 개수로 제스처 매핑
                 is_start_hand = (open_count == 5)   # START: 손가락 5개 전부 폄
                 is_stop_hand = (open_count == 1)    # STOP: 손가락 1개만 폄 (검지 하나만 핀 상태)
                 is_end_hand = (open_count == 0)     # END: 손가락 0개 (주먹 쥔 상태)
 
-                # 1) START 판정 (손가락 5개)
+                # 타이머 판정
                 if is_start_hand:
-                    stop_hold_start_time = 0  
-                    stop_triggered = False
-                    end_hold_start_time = 0
-                    end_triggered = False
-                    
+                    stop_hold_start_time = 0; stop_triggered = False
+                    end_hold_start_time = 0; end_triggered = False
                     if start_hold_start_time == 0:
                         start_hold_start_time = now 
                     elif now - start_hold_start_time >= HOLD_REQUIRED_TIME and not start_triggered:
@@ -172,13 +164,9 @@ def gesture_processing_thread(hands):
                         send_to_qt("START")
                         start_triggered = True 
                         
-                # 2) STOP 판정 (손가락 1개)
                 elif is_stop_hand:
-                    start_hold_start_time = 0 
-                    start_triggered = False
-                    end_hold_start_time = 0
-                    end_triggered = False
-                    
+                    start_hold_start_time = 0; start_triggered = False
+                    end_hold_start_time = 0; end_triggered = False
                     if stop_hold_start_time == 0:
                         stop_hold_start_time = now 
                     elif now - stop_hold_start_time >= HOLD_REQUIRED_TIME and not stop_triggered:
@@ -186,36 +174,31 @@ def gesture_processing_thread(hands):
                         send_to_qt("STOP")
                         stop_triggered = True 
                         
-                # 3) END 판정 (손가락 0개 / 주먹)
                 elif is_end_hand:
-                    start_hold_start_time = 0
-                    start_triggered = False
-                    stop_hold_start_time = 0
-                    stop_triggered = False
-                    
+                    start_hold_start_time = 0; start_triggered = False
+                    stop_hold_start_time = 0; stop_triggered = False
                     if end_hold_start_time == 0:
                         end_hold_start_time = now
                     elif now - end_hold_start_time >= HOLD_REQUIRED_TIME and not end_triggered:
                         print("✊ [유지 감지] 주먹(0개) -> GESTURE:END", flush=True)
                         send_to_qt("END")
                         end_triggered = True
-                        
                 else:
-                    start_hold_start_time = 0
-                    stop_hold_start_time = 0
-                    end_hold_start_time = 0
-                    start_triggered = False
-                    stop_triggered = False
-                    end_triggered = False
+                    start_hold_start_time = 0; stop_hold_start_time = 0; end_hold_start_time = 0
+                    start_triggered = False; stop_triggered = False; end_triggered = False
 
-                # ── 기존 볼륨 및 스와이프 로직 유지 ──
+
+                # -------------------------------------------------------------
+                # 2. 🔥 독립 파트 B: 스와이프 및 볼륨 로직 (제스처 if문 밖으로 완전히 분리)
+                # -------------------------------------------------------------
                 current_x = landmarks[0].x
                 current_y = landmarks[0].y
 
                 if prev_x != 0 and prev_y != 0:
-                    y_diff = current_y - prev_y 
                     x_diff = current_x - prev_x 
+                    y_diff = current_y - prev_y 
 
+                    # 2-1. 볼륨 조절 핸들링 (Y축 변화량 체크)
                     if now - last_volume_time > VOLUME_COOLDOWN:
                         if y_diff < -0.08:  
                             print("▲ [볼륨 업] VOLUME_UP", flush=True)
@@ -226,33 +209,36 @@ def gesture_processing_thread(hands):
                             send_to_qt("VOLUME_DOWN")
                             last_volume_time = now
 
+                    # 2-2. 스와이프 조절 핸들링 (X축 변화량 체크 -> LEFT/RIGHT 정상 송신)
                     if now - last_swipe_time > SWIPE_COOLDOWN:
                         if not swipe_locked:
-                            if x_diff < -0.14:   
-                                print("◀ [스와이프] 다음 페이지(NEXT)", flush=True)
-                                send_to_qt("NEXT")
+                            if x_diff < -0.14:   # 사용자가 손을 왼쪽으로 빠르게 이동 (화면 기준 왼쪽 스와이프)
+                                print("◀ [스와이프] LEFT 전송", flush=True)
+                                send_to_qt("LEFT")
                                 last_swipe_time = now
                                 swipe_locked = True 
-                            elif x_diff > 0.14:  
-                                print("▶ [스와이프] 이전 페이지(PREV)", flush=True)
-                                send_to_qt("PREV")
+                            elif x_diff > 0.14:  # 사용자가 손을 오른쪽으로 빠르게 이동 (화면 기준 오른쪽 스와이프)
+                                print("▶ [스와이프] RIGHT 전송", flush=True)
+                                send_to_qt("RIGHT")
                                 last_swipe_time = now
                                 swipe_locked = True 
                         else:
-                            if (x_diff > 0.05 or x_diff < -0.05):
+                            # 역방향 움직임 복귀 시 락 해제 기준 완화
+                            if abs(x_diff) > 0.05:
                                 swipe_locked = False
 
+                # 다음 프레임 연산을 위해 현재 좌표 기억
                 prev_x = current_x
                 prev_y = current_y
+                
+                # 하나의 손 landmark만 처리하도록 루프 탈출 (싱글 핸들 보장)
+                break
         else:
+            # 화면에 손이 감지되지 않으면 모든 물리 상태 및 누적 타이머 초기화
             prev_x, prev_y = 0, 0
             swipe_locked = False
-            start_hold_start_time = 0
-            stop_hold_start_time = 0
-            end_hold_start_time = 0
-            start_triggered = False
-            stop_triggered = False
-            end_triggered = False
+            start_hold_start_time = 0; stop_hold_start_time = 0; end_hold_start_time = 0
+            start_triggered = False; stop_triggered = False; end_triggered = False
             
         time.sleep(0.02)
 
@@ -317,7 +303,7 @@ def main():
                 threading.Thread(target=analyze_emotion_and_play, args=(frame.copy(),), daemon=True).start()
                 initial_scan_done = True 
 
-        # cv2.imshow("SmartMirror Camera", frame)
+        cv2.imshow("SmartMirror Camera", frame)
 
         if cv2.waitKey(10) & 0xFF == ord('q'):
             print("\n⏹️ 사용자에 의해 카메라 모니터링이 종료되었습니다.", flush=True)
@@ -327,7 +313,7 @@ def main():
     if qt_socket:
         qt_socket.close()
     cap.release()
-    #cv2.destroyAllWindows()
+    cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     main()
