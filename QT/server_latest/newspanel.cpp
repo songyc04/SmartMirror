@@ -15,7 +15,7 @@ NewsPanel::NewsPanel(QWidget *parent)
 {
     ui->setupUi(this);
 
-    ui->newsContainer->setGeometry(0,80,740,420);
+    ui->newsContainer->setGeometry(0,80,740,300);
 
     manager = new QNetworkAccessManager(this);
 
@@ -90,7 +90,7 @@ void NewsPanel::onNewsReply(
     QVBoxLayout *mainLayout =
         new QVBoxLayout(ui->newsContainer);
 
-    mainLayout->setSpacing(15);
+    mainLayout->setSpacing(3);
 
     mainLayout->setContentsMargins(0,0,0,0);
 
@@ -121,7 +121,7 @@ void NewsPanel::onNewsReply(
 
         QFrame *card =
             new QFrame();
-        card->setFixedHeight(95);
+        card->setFixedHeight(70);
 
         card->setStyleSheet(
             "background:rgba(255,255,255,0.05);"
@@ -131,7 +131,7 @@ void NewsPanel::onNewsReply(
         QHBoxLayout *cardLayout =
             new QHBoxLayout(card);
 
-        cardLayout->setContentsMargins(15,10,15,10);
+        cardLayout->setContentsMargins(15,5,15,5);
         cardLayout->setSpacing(15);
 
         //--------------------------------
@@ -182,7 +182,7 @@ void NewsPanel::onNewsReply(
 
         descLabel->setMaximumWidth(560);
 
-        descLabel->setFixedHeight(28);
+        descLabel->setFixedHeight(18);
 
         descLabel->setMaximumHeight(20);
 

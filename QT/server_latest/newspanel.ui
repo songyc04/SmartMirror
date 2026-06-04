@@ -20,8 +20,8 @@ border-radius: 25px;</string>
   <widget class="QLabel" name="labelTitle">
    <property name="geometry">
     <rect>
-     <x>240</x>
-     <y>70</y>
+     <x>260</x>
+     <y>10</y>
      <width>231</width>
      <height>61</height>
     </rect>
@@ -37,6 +37,9 @@ padding:8px 25px;</string>
    </property>
    <property name="text">
     <string>주요 뉴스</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
    </property>
   </widget>
   <widget class="QWidget" name="newsContainer" native="true">

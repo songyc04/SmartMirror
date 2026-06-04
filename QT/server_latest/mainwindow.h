@@ -25,6 +25,8 @@ public:
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
+    /*//테스트용
+    void keyPressEvent(QKeyEvent *event) override;*/
 
 private slots:
     void updateTime();
@@ -61,6 +63,10 @@ private:
 
     bool waitingData = false;
     bool isPaused;
+
+    bool isNewsVisible = false;
+    bool isWeatherVisible = true;
+    bool animationRunning = false;
 };
 
 #endif // MAINWINDOW_H

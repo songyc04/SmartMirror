@@ -12,6 +12,7 @@
 #include <QPalette>
 #include <QColor>
 #include <QProcessEnvironment>
+//#include <QKeyEvent>    //테스트용
 
 const quint16 ARDUINO_PORT = 9000;
 const quint16 GESTURE_PORT = 9001;
@@ -105,6 +106,7 @@ MainWindow::MainWindow(QWidget *parent)
     blackOverlay->setStyleSheet("background-color:black;");
     blackOverlay->raise();
     blackOverlay->show(); // 시작할 때는 화면 켜진 상태
+    //blackOverlay->hide();
 
     // weather panel(초기위치)
     WeatherWidget = new WeatherPanel(ui->centralWidget);
@@ -140,8 +142,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->label_2->resize(160, 50);
 
     newsWidget = new NewsPanel(ui->centralWidget);
-    newsWidget->setGeometry(1920, 430, 760, 520);
+    newsWidget->setGeometry(1920, 520, 760, 620);
     newsWidget->hide();
+
 }
 
 MainWindow::~MainWindow()
@@ -339,18 +342,6 @@ void MainWindow::processData(const QString &data)
         }
         return;
     }
-
-    if (data == "SHOW_NEWS")
-    {
-        showNewsPanel();
-        return;
-    }
-    if (data == "SHOW_WEATHER")
-    {
-        showWeatherPanel();
-        return;
-    }
-
     if (data.startsWith("BRI:") && !data.contains("TEMP:"))
     {
         int briVal = data.section("BRI:", 1, 1).trimmed().toInt();
@@ -485,46 +476,105 @@ void MainWindow::gestureDetected(const QString &gesture)
             isPaused = false;
         }
     }
+    //왼쪽은 뉴스, 오른쪽은 날씨
+    else if (gesture == "LEFT")
+    {
+        qDebug() << "⬅ LEFT : 뉴스 패널";
+        showNewsPanel();
+    }
+    else if (gesture == "RIGHT")
+    {
+        qDebug() << "➡ RIGHT : 날씨 패널";
+        showWeatherPanel();
+    }
 }
 
 // ── Weather Panel 보이기 ──────────────────────────
 void MainWindow::showWeatherPanel()
 {
+    if(animationRunning)
+        return;
+
+    if(isWeatherVisible)
+        return;
+
+    animationRunning = true;
+
+    isWeatherVisible = true;
+    isNewsVisible = false;
+
     WeatherWidget->show();
 
     QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
     newsAnim->setDuration(700);
     newsAnim->setStartValue(newsWidget->pos());
-    newsAnim->setEndValue(QPoint(1920, 150));
+    newsAnim->setEndValue(QPoint(1920, 520));
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
-    weatherAnim->setStartValue(WeatherWidget->pos());
+    weatherAnim->setStartValue(QPoint(1080,1200));
     weatherAnim->setEndValue(QPoint(1080, 460));
 
     newsAnim->start(QAbstractAnimation::DeleteWhenStopped);
     weatherAnim->start(QAbstractAnimation::DeleteWhenStopped);
 
     connect(newsAnim, &QPropertyAnimation::finished, newsWidget, &QWidget::hide);
+    connect(weatherAnim,&QPropertyAnimation::finished,this,[this](){
+        animationRunning = false;
+    });
 }
 
 // ── News Panel 보이기 ──────────────────────────
 void MainWindow::showNewsPanel()
 {
+    if(animationRunning)
+        return;
+
+    if(isNewsVisible)
+        return;
+
+    animationRunning = true;
+
+    isNewsVisible = true;
+    isWeatherVisible = false;
+
     newsWidget->show();
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
-    weatherAnim->setStartValue(WeatherWidget->pos());
-    weatherAnim->setEndValue(QPoint(-900, 460));
+    weatherAnim->setStartValue(QPoint(1080,460));
+    weatherAnim->setEndValue(QPoint(1080, 1200));
 
     QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
     newsAnim->setDuration(700);
-    newsAnim->setStartValue(newsWidget->pos());
-    newsAnim->setEndValue(QPoint(1180, 580));
+    newsAnim->setStartValue(QPoint(1920,520));
+    newsAnim->setEndValue(QPoint(1180, 520));
 
     weatherAnim->start(QAbstractAnimation::DeleteWhenStopped);
     newsAnim->start(QAbstractAnimation::DeleteWhenStopped);
 
     connect(weatherAnim, &QPropertyAnimation::finished, WeatherWidget, &QWidget::hide);
+    connect(newsAnim,&QPropertyAnimation::finished,this,[this](){
+        animationRunning = false;
+    });
 }
+
+/*//테스트용
+void MainWindow::keyPressEvent(QKeyEvent *event)
+{
+    switch(event->key())
+    {
+    case Qt::Key_1:
+        showNewsPanel();
+        break;
+
+    case Qt::Key_2:
+        showWeatherPanel();
+        break;
+
+    default:
+        QMainWindow::keyPressEvent(event);
+        break;
+    }
+}
+*/
