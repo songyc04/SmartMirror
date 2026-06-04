@@ -60,7 +60,6 @@ MainWindow::MainWindow(QWidget *parent)
         QByteArray output = emotionProcess->readAllStandardOutput();
         qDebug() << "[Python Out]:" << QString::fromUtf8(output).trimmed();
     });
-
     // 파이썬 표준 에러 출력 가로채기
     connect(emotionProcess, &QProcess::readyReadStandardError, this, [this]() {
         QByteArray errorOutput = emotionProcess->readAllStandardError();
@@ -323,7 +322,7 @@ void MainWindow::processData(const QString &data)
     {
         waitingData = true;
         if (emotionProcess && emotionProcess->state() == QProcess::NotRunning) {
-            emotionProcess->setWorkingDirectory("/home/desktop/SmartMirror-main/opencv");
+            emotionProcess->setWorkingDirectory("/home/jt-user/SmartMirror/opencv");
 
             QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
             if (!env.contains("DISPLAY")) { // 기존 contains 문법 오류 수정 (env.contains)
@@ -331,7 +330,7 @@ void MainWindow::processData(const QString &data)
             }
             emotionProcess->setProcessEnvironment(env);
 
-            QString pythonExecutable = "/home/desktop/py_310/bin/python3";
+            QString pythonExecutable = "/home/jt-user/deepface_env/bin/python3";
             QStringList arguments;
             arguments << "opencv_latest.py";
 
