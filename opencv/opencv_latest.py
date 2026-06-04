@@ -86,8 +86,7 @@ def analyze_emotion_and_play(frame):
         print(f"PYTHON_ERROR (DeepFace): {str(e)}", flush=True)
 
 
-# ── ⭐ [개선 핵심] MediaPipe 손 인식을 처리할 비동기 백그라운드 함수 ──
-# 메인 스레드와 병렬로 구동되어 캡처 프레임이 부드럽게 유지되도록 만듭니다.
+# ── MediaPipe 손 인식을 처리할 비동기 백그라운드 함수 ──
 gesture_lock = threading.Lock()
 latest_rgb_frame = None
 gesture_running = True
@@ -95,15 +94,21 @@ gesture_running = True
 def gesture_processing_thread(hands):
     global latest_rgb_frame, gesture_running, qt_connected
     
-    # 제스처 상태 변수들 복사
+    # 제스처 상태 변수들
     last_swipe_time = 0
     last_volume_time = 0
     prev_x, prev_y = 0, 0       
     swipe_locked = False        
+    
+    # 각 상태별 유지 타이머 누적 변수
     start_hold_start_time = 0   
     stop_hold_start_time = 0    
+    end_hold_start_time = 0     
+    
+    # 트리거 작동 완료 플래그
     start_triggered = False     
     stop_triggered = False      
+    end_triggered = False         
 
     while gesture_running:
         with gesture_lock:
@@ -123,42 +128,87 @@ def gesture_processing_thread(hands):
             for hand_landmarks in results.multi_hand_landmarks:
                 landmarks = hand_landmarks.landmark
                 
-                fingers_open = []
+                # 1. 네 손가락(검지, 중지, 약지, 새끼)의 펴짐 상태 확인
+                base_fingers_open = []
                 for tip, pip in [(8, 6), (12, 10), (16, 14), (20, 18)]: 
                     if landmarks[tip].y < landmarks[pip].y:
-                        fingers_open.append(True)  
+                        base_fingers_open.append(True)  
                     else:
-                        fingers_open.append(False) 
-                open_count = fingers_open.count(True)
+                        base_fingers_open.append(False) 
+                
+                # 4개의 주요 손가락 중 펴진 개수 계산
+                four_fingers_count = base_fingers_open.count(True)
 
-                is_open_hand = (open_count >= 3)   
-                is_fist_hand = (open_count == 0)   
+                # 2. 💡 [이중 방어 필터 적용] 엄지 오인식 완벽 차단
+                # 조건 A: 네 손가락이 전부 접혔다 -> 엄지 무시하고 무조건 0개 (주먹: END)
+                if four_fingers_count == 0:
+                    open_count = 0
+                
+                # 조건 B: 검지/중지/약지/새끼 중 정확히 '하나'만 펴졌다 -> 엄지 상태가 어떻든 무조건 1개 (STOP)
+                elif four_fingers_count == 1:
+                    open_count = 1
+                    
+                # 조건 C: 손을 애매하게 폈거나 전부 다 폈을 때만 엄지 상태를 정밀 합산
+                else:
+                    thumb_open = landmarks[4].y < landmarks[2].y or abs(landmarks[4].x - landmarks[2].x) > 0.05
+                    open_count = four_fingers_count + (1 if thumb_open else 0)
 
-                if is_open_hand:
+                # 3. 보정된 개수로 제스처 매핑
+                is_start_hand = (open_count == 5)   # START: 손가락 5개 전부 폄
+                is_stop_hand = (open_count == 1)    # STOP: 손가락 1개만 폄 (검지 하나만 핀 상태)
+                is_end_hand = (open_count == 0)     # END: 손가락 0개 (주먹 쥔 상태)
+
+                # 1) START 판정 (손가락 5개)
+                if is_start_hand:
                     stop_hold_start_time = 0  
                     stop_triggered = False
+                    end_hold_start_time = 0
+                    end_triggered = False
+                    
                     if start_hold_start_time == 0:
                         start_hold_start_time = now 
                     elif now - start_hold_start_time >= HOLD_REQUIRED_TIME and not start_triggered:
-                        print("✋ [유지 감지] 보자기 -> GESTURE:START", flush=True)
+                        print("✋ [유지 감지] 손가락 5개 -> GESTURE:START", flush=True)
                         send_to_qt("START")
                         start_triggered = True 
                         
-                elif is_fist_hand:
+                # 2) STOP 판정 (손가락 1개)
+                elif is_stop_hand:
                     start_hold_start_time = 0 
                     start_triggered = False
+                    end_hold_start_time = 0
+                    end_triggered = False
+                    
                     if stop_hold_start_time == 0:
                         stop_hold_start_time = now 
                     elif now - stop_hold_start_time >= HOLD_REQUIRED_TIME and not stop_triggered:
-                        print("✊ [유지 감지] 주먹 -> GESTURE:STOP", flush=True)
+                        print("☝️ [유지 감지] 손가락 1개 -> GESTURE:STOP", flush=True)
                         send_to_qt("STOP")
                         stop_triggered = True 
+                        
+                # 3) END 판정 (손가락 0개 / 주먹)
+                elif is_end_hand:
+                    start_hold_start_time = 0
+                    start_triggered = False
+                    stop_hold_start_time = 0
+                    stop_triggered = False
+                    
+                    if end_hold_start_time == 0:
+                        end_hold_start_time = now
+                    elif now - end_hold_start_time >= HOLD_REQUIRED_TIME and not end_triggered:
+                        print("✊ [유지 감지] 주먹(0개) -> GESTURE:END", flush=True)
+                        send_to_qt("END")
+                        end_triggered = True
+                        
                 else:
                     start_hold_start_time = 0
                     stop_hold_start_time = 0
+                    end_hold_start_time = 0
                     start_triggered = False
                     stop_triggered = False
+                    end_triggered = False
 
+                # ── 기존 볼륨 및 스와이프 로직 유지 ──
                 current_x = landmarks[0].x
                 current_y = landmarks[0].y
 
@@ -199,28 +249,26 @@ def gesture_processing_thread(hands):
             swipe_locked = False
             start_hold_start_time = 0
             stop_hold_start_time = 0
+            end_hold_start_time = 0
             start_triggered = False
             stop_triggered = False
+            end_triggered = False
             
-        # 백그라운드 스레드의 CPU 과점 방지를 위한 양보
         time.sleep(0.02)
 
 
 def main():
     global latest_rgb_frame, gesture_running
     
-    # 백그라운드 스레드로 Qt 서버 자동 접속 시작
     threading.Thread(target=connect_to_qt, daemon=True).start()
 
     mp_hands = mp.solutions.hands
-    # ⭐ [성능 최적화 1] 모델 연산 강도 완화 (다중 검출 비활성화, 가볍게 추적하도록 세팅 변경)
     hands = mp_hands.Hands(
         max_num_hands=1, 
-        min_detection_confidence=0.5, # 신뢰도를 살짝 낮춰 검출 연산 부하 경감
+        min_detection_confidence=0.5, 
         min_tracking_confidence=0.5
     )
 
-    # ── 카메라 장치 탐색 방어 코드 ──
     cap = None
     for cam_idx in range(10):
         print(f"📷 카메라 인덱스 [{cam_idx}]번 오픈 시도 중...", flush=True)
@@ -236,14 +284,11 @@ def main():
         
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-
-    # ⭐ [성능 최적화 2] 카메라 장치 자체의 버퍼 크기를 줄여 프레임 밀림 방지
     cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
     initial_scan_done = False
     scan_start_time = 0
 
-    # ⭐ 제스처 스레드 구동 개시
     t = threading.Thread(target=gesture_processing_thread, args=(hands,), daemon=True)
     t.start()
 
@@ -258,13 +303,11 @@ def main():
         frame = cv2.flip(frame, 1) 
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) 
         
-        # ⭐ [성능 최적화 3] 백그라운드 스레드가 분석할 수 있도록 최신 프레임 갱신
         with gesture_lock:
             latest_rgb_frame = rgb_frame
 
         now = time.time() 
 
-        # ── [이벤트] Qt 연동 감지 후 최초 1회 5초 뒤 표정 인식 실행 ──
         if qt_connected and not initial_scan_done:
             if scan_start_time == 0:
                 scan_start_time = now
@@ -274,15 +317,12 @@ def main():
                 threading.Thread(target=analyze_emotion_and_play, args=(frame.copy(),), daemon=True).start()
                 initial_scan_done = True 
 
-        # ── ⭐ [개선 핵심] 메인 루프에서는 렌더링에만 집중 (매우 매끄러워짐) ──
         cv2.imshow("SmartMirror Camera", frame)
 
-        # 10ms 대기로 조정하여 반응 속도와 렌더링 주기를 가속화
         if cv2.waitKey(10) & 0xFF == ord('q'):
             print("\n⏹️ 사용자에 의해 카메라 모니터링이 종료되었습니다.", flush=True)
             break
 
-    # ── 리소스 안전 해제 ──
     gesture_running = False
     if qt_socket:
         qt_socket.close()
