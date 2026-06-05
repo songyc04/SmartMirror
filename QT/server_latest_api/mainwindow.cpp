@@ -12,7 +12,7 @@
 #include <QPalette>
 #include <QColor>
 #include <QProcessEnvironment>
-#include <QKeyEvent>    //테스트용
+//#include <QKeyEvent>    //테스트용
 
 const quint16 ARDUINO_PORT = 9000;
 const quint16 GESTURE_PORT = 9001;
@@ -104,9 +104,9 @@ MainWindow::MainWindow(QWidget *parent)
     blackOverlay = new QFrame(ui->centralWidget);
     blackOverlay->setGeometry(ui->centralWidget->rect());
     blackOverlay->setStyleSheet("background-color:black;");
-    //blackOverlay->raise();
-    //blackOverlay->show(); // 시작할 때는 화면 켜진 상태
-    blackOverlay->hide();
+    blackOverlay->raise();
+    blackOverlay->show(); // 시작할 때는 화면 켜진 상태
+    //blackOverlay->hide();
 
     // weather panel(초기위치)
     WeatherWidget = new WeatherPanel(ui->centralWidget);
@@ -344,6 +344,7 @@ void MainWindow::processData(const QString &data)
                                   QStringList() << "opencv_latest.py");
             qDebug() << "아두이노 ON: 파이썬 감정 분석 스크립트를 시작합니다.";
         }
+        waitingData = true;
         return;
     }
     if (data.startsWith("BRI:") && !data.contains("TEMP:"))
@@ -550,7 +551,7 @@ void MainWindow::showNewsPanel()
     weatherAnim->setEndValue(QPoint(1080, 1200));
 
     QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
-    newsAnim->setDuration(700);
+    newsAnim->setDuration(waitingData);
     newsAnim->setStartValue(QPoint(1920,520));
     newsAnim->setEndValue(QPoint(1180, 520));
 
@@ -562,7 +563,7 @@ void MainWindow::showNewsPanel()
         animationRunning = false;
     });
 }
-
+/*
 //테스트용
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
@@ -581,3 +582,4 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         break;
     }
 }
+*/

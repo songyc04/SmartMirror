@@ -245,7 +245,7 @@ void MainWindow::onClientDisconnected()
 {
     qDebug() << "아두이노 연결 종료";
     qDebug() << "아두이노 대기 중 - 포트:" << ARDUINO_PORT;
-    if (tcpSocket)
+    if (tcpSocket)();
     {
         tcpSocket->deleteLater();
         tcpSocket = nullptr;
@@ -325,7 +325,6 @@ void MainWindow::processData(const QString &data)
     {
         if (emotionProcess && emotionProcess->state() == QProcess::NotRunning) {
             emotionProcess->setWorkingDirectory("/home/jt-user/SmartMirror/opencv");
-
             QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
             // 기존: contains 체크 후 삽입 → 이미 잘못된 DISPLAY일 수도 있음
             // 수정: 무조건 덮어쓰기
@@ -343,9 +342,11 @@ void MainWindow::processData(const QString &data)
             emotionProcess->start("/home/jt-user/deepface_env/bin/python3",
                                   QStringList() << "opencv_latest.py");
             qDebug() << "아두이노 ON: 파이썬 감정 분석 스크립트를 시작합니다.";
+
         }
+        waitingData = true;
         return;
-    }
+    };
     if (data.startsWith("BRI:") && !data.contains("TEMP:"))
     {
         int briVal = data.section("BRI:", 1, 1).trimmed().toInt();

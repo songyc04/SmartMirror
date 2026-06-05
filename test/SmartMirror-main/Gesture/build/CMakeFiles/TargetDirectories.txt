@@ -1,4 +1,0 @@
-/home/jt-user/SmartMirror/Gesture/build/CMakeFiles/rebuild_cache.dir
-/home/jt-user/SmartMirror/Gesture/build/CMakeFiles/smart_mirror.dir
-/home/jt-user/SmartMirror/Gesture/build/CMakeFiles/edit_cache.dir
-/home/jt-user/SmartMirror/Gesture/build/CMakeFiles/smart_mirror_autogen.dir
