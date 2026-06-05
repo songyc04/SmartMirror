@@ -67,6 +67,7 @@ private:
     bool isNewsVisible = false;
     bool isWeatherVisible = true;
     bool animationRunning = false;
+    QString keyword = NULL;
 };
 
 #endif // MAINWINDOW_H

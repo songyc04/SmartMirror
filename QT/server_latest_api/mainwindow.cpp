@@ -324,7 +324,7 @@ void MainWindow::processData(const QString &data)
     if (data == "ON")
     {
         if (emotionProcess && emotionProcess->state() == QProcess::NotRunning) {
-            emotionProcess->setWorkingDirectory("/home/jt-user/SmartMirror/opencv");
+            emotionProcess->setWorkingDirectory("/home/jt-user/test/opencv");
 
             QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
             // 기존: contains 체크 후 삽입 → 이미 잘못된 DISPLAY일 수도 있음
@@ -417,8 +417,13 @@ void MainWindow::gestureDetected(const QString &gesture)
 {
     qDebug() << "🔍 [제스처 검증 완료] 진입 명령어:" << gesture;
 
+
+    if (gesture.startsWith("KEYWORD"))
+    {
+        keyword = gesture.section(':', 1, 1).trimmed();
+    }
     // VOLUME_UP = START 역할
-    if (gesture == "START")
+    else if (gesture == "START")
     {
         // 멈춘 지점부터 이어 재생하기 (IPC 통신 이용)
         if (isPaused && mpvProcess->state() == QProcess::Running)
@@ -439,8 +444,15 @@ void MainWindow::gestureDetected(const QString &gesture)
             }
 
             mpvProcess->setProcessChannelMode(QProcess::ForwardedChannels);
-
-            QString searchTarget = "ytdl://ytsearch1:기분 좋을 때 듣는 노래";
+            QString searchTarget;
+            if (keyword != NULL)
+            {
+                searchTarget = "ytdl://ytsearch1:" + keyword + " 플레이리스트";
+            }
+            else
+            {
+                searchTarget = "ytdl://ytsearch1:잔잔한 플레이리스트";
+            }
 
             QStringList arguments;
             arguments << "--no-video"
