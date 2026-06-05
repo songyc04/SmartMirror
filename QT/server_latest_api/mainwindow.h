@@ -68,6 +68,7 @@ private:
     bool isWeatherVisible = true;
     bool animationRunning = false;
     QString keyword = NULL;
+    int searchCount = 10;
 };
 
 #endif // MAINWINDOW_H

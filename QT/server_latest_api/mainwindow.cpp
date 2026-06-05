@@ -124,6 +124,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // ── 미디어 재생용 QProcess 단독 할당 ──
     mpvProcess = new QProcess(this);
+    ytDlpProcess = new QProcess(this);
 
     // ── 오른쪽 위로 위치 설정 ──────────────────
     ui->dateLabel->move(1450, 20);
@@ -341,7 +342,8 @@ void MainWindow::processData(const QString &data)
             });
 
             emotionProcess->start("/home/jt-user/deepface_env/bin/python3",
-                                  QStringList() << "opencv_latest.py");
+            QStringList() << "opencv_latest.py");
+
             qDebug() << "아두이노 ON: 파이썬 감정 분석 스크립트를 시작합니다.";
         }
         waitingData = true;
@@ -412,71 +414,123 @@ void MainWindow::resizeEvent(QResizeEvent *event)
         blackOverlay->setGeometry(ui->centralWidget->rect());
 }
 
-// ── mpv 단독 제스처 처리 루틴 ──────────────────
 void MainWindow::gestureDetected(const QString &gesture)
 {
     qDebug() << "🔍 [제스처 검증 완료] 진입 명령어:" << gesture;
 
-
     if (gesture.startsWith("KEYWORD"))
     {
         keyword = gesture.section(':', 1, 1).trimmed();
+        qDebug() << "KEYWORD: " << keyword;
     }
     // VOLUME_UP = START 역할
     else if (gesture == "START")
     {
+        // 🔥 [추가된 방어 코드] 이미 음악이 정상 재생 중인 경우 추가적인 START 제스처 무시하고 리턴
+        if (!isPaused && mpvProcess && mpvProcess->state() == QProcess::Running)
+        {
+            qDebug() << "🎵 [START 무시] 이미 음악이 정상 재생 중입니다. 명령을 리턴합니다.";
+            return;
+        }
+
         // 멈춘 지점부터 이어 재생하기 (IPC 통신 이용)
-        if (isPaused && mpvProcess->state() == QProcess::Running)
+        if (isPaused && mpvProcess && mpvProcess->state() == QProcess::Running)
         {
             qDebug() << "▶️ [START - Resume] 일시정지 상태 탈출: 멈춘 지점부터 다시 재생합니다.";
             QProcess::execute("sh", QStringList() << "-c"
                                                   << "echo '{\"command\":[\"set_property\",\"pause\",false]}' | socat - /tmp/mpv-socket");
             isPaused = false;
         }
-        else // 최초 재생 혹은 프로세스가 꺼진 상태일 때 새 인스턴스 생성
+        else // 최초 재생 혹은 프로세스가 완전히 꺼진 상태일 때 새 인스턴스 생성
         {
             qDebug() << "🎬 [START - New] 최초 재생 감지: mpv 스트리밍을 처음부터 구동합니다.";
 
-            if (mpvProcess->state() != QProcess::NotRunning)
-            {
-                mpvProcess->kill();
-                mpvProcess->waitForFinished(1000);
+            if (!ytDlpProcess || !mpvProcess) return;
+
+            // 이미 구동 중인 이전 yt-dlp 프로세스가 있다면 강제 종료(Kill)
+            if (ytDlpProcess->state() != QProcess::NotRunning) {
+                qDebug() << "⏳ [yt-dlp] 이미 구동 중인 이전 프로세스를 강제 종료합니다.";
+                ytDlpProcess->kill();
+                ytDlpProcess->waitForFinished(1000);
             }
 
-            mpvProcess->setProcessChannelMode(QProcess::ForwardedChannels);
-            QString searchTarget;
-            if (keyword != NULL)
-            {
-                searchTarget = "ytdl://ytsearch1:" + keyword + " 플레이리스트";
-            }
-            else
-            {
-                searchTarget = "ytdl://ytsearch1:잔잔한 플레이리스트";
-            }
+            // [방어 코드] 키워드가 비어있을 경우를 대비한 예외 처리
+            if (keyword == NULL) keyword = "잔잔한";
 
-            QStringList arguments;
-            arguments << "--no-video"
-                      << "--input-ipc-server=/tmp/mpv-socket"
-                      << "--ytdl-format=bestaudio/best"
-                      << "--ao=alsa,pulse"
-                      << "--gapless-audio=yes"
-                      << searchTarget;
+            // 파이썬 3.10 가상환경을 사용하여 조회수 정렬 수행
+            QString cmd = QString("/home/jt-user/py310/bin/yt-dlp \"ytsearch")
+                          + QString::number(searchCount) + ":" + keyword + " 플레이리스트\" "
+                          + "--flat-playlist --print \"%(view_count)012d %(url)s\" "
+                          + "| sort -r | head -n 1 | awk '{print $2}'";
+            // 새로운 연결을 맺기 전 기존 finished 연결을 무조건 초기화
+            ytDlpProcess->disconnect();
 
-            qDebug() << "🎵 [mpv] 내부 파서 엔진 구동 및 스트리밍 개시...";
-            mpvProcess->start("/usr/bin/mpv", arguments);
+            connect(
+                ytDlpProcess,
+                QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                this,
+                [this](int exitCode, QProcess::ExitStatus) {
+                    if (exitCode != 0) {
+                        qWarning() << "⚠️ 조회수 정렬 및 URL 추출 실패";
+                        return;
+                    }
 
-            if (!mpvProcess->waitForStarted(1000)) {
-                qWarning() << "❌ 오류: mpv 프로세스를 구동하지 못했습니다.";
-            }
+                    // 파이프라인을 거쳐 나온 최종 결과값
+                    QString highViewUrl = QString::fromUtf8(ytDlpProcess->readAllStandardOutput()).trimmed();
+
+                    if (highViewUrl.isEmpty() || !highViewUrl.startsWith("http")) {
+                        qWarning() << "⚠️ 유효한 유튜브 주소를 획득하지 못했습니다. 수신 데이터:" << highViewUrl;
+                        return;
+                    }
+
+                    qDebug() << "🎯 5개 중 조회수가 가장 높은 영상 URL 추출 성공:" << highViewUrl;
+
+                    // mpv가 돌고 있다면 안전하게 사살
+                    if (mpvProcess->state() != QProcess::NotRunning) {
+                        mpvProcess->kill();
+                        mpvProcess->waitForFinished(1000);
+                    }
+
+                    // 기존 잔여 소켓 파일 제거
+                    QProcess::execute("rm", QStringList() << "-f" << "/tmp/mpv-socket");
+
+                    // mpv에 파이썬 3.10 가상환경 환경변수(PATH)를 주입합니다.
+                    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+                    env.insert("PATH", "/home/jt-user/py310/bin:" + env.value("PATH"));
+                    mpvProcess->setProcessEnvironment(env);
+
+                    // 깔끔해진 mpv 인자 구성
+                    QStringList mpvArgs;
+                    mpvArgs << "--no-video"
+                            << "--input-ipc-server=/tmp/mpv-socket"
+                            << "--gapless-audio=yes"
+                            << "--ao=alsa"
+                            << highViewUrl; // URL은 맨 뒤로 배치
+
+                    qDebug() << "🚀 [mpv 구동 명령어]: /usr/bin/mpv" << mpvArgs.join(" ");
+
+                    // 에러 감시 시그널 초기화 및 연결
+                    disconnect(mpvProcess, &QProcess::errorOccurred, nullptr, nullptr);
+                    connect(mpvProcess, &QProcess::errorOccurred, this, [](QProcess::ProcessError err){
+                        qWarning() << "❌ mpv 실행 자체 실패:" << err;
+                    });
+
+                    mpvProcess->start("/usr/bin/mpv", mpvArgs);
+                },
+                Qt::UniqueConnection
+            );
+
+            // 파이프라인 복합 문법(|)을 커널이 올바르게 해석하도록 sh를 통해 명령어를 실행합니다.
+            ytDlpProcess->start("sh", QStringList() << "-c" << cmd);
             isPaused = false;
         }
     }
     // STOP 수신 시: 노래를 일시정지하고 일시정지 플래그 가동
     else if (gesture == "STOP")
     {
-        if (mpvProcess->state() == QProcess::Running)
+        if (mpvProcess && mpvProcess->state() == QProcess::Running)
         {
-            qDebug() << "⏸️ [STOP] 제스처 감지: 음악 일시정지 명령을 쏘아줍니다.";
+            qDebug() << "➡ RIGHT : ⏸️ [STOP] 제스처 감지: 음악 일시정지 명령을 쏘아줍니다.";
             QProcess::execute("sh", QStringList() << "-c"
                                                   << "echo '{\"command\":[\"set_property\",\"pause\",true]}' | socat - /tmp/mpv-socket");
             isPaused = true;
@@ -485,7 +539,7 @@ void MainWindow::gestureDetected(const QString &gesture)
     // END 수신 시: mpv 프로세스를 완전히 종료하고 플래그 해제
     else if (gesture == "END")
     {
-        if (mpvProcess->state() != QProcess::NotRunning)
+        if (mpvProcess && mpvProcess->state() != QProcess::NotRunning)
         {
             qDebug() << "⏹️ [END] 제스처 감지: 모든 오디오 재생 프로세스를 완전 종료합니다.";
             mpvProcess->kill();
@@ -493,7 +547,7 @@ void MainWindow::gestureDetected(const QString &gesture)
             isPaused = false;
         }
     }
-    //왼쪽은 뉴스, 오른쪽은 날씨
+    // 왼쪽은 뉴스, 오른쪽은 날씨
     else if (gesture == "LEFT")
     {
         qDebug() << "⬅ LEFT : 뉴스 패널";
@@ -563,7 +617,7 @@ void MainWindow::showNewsPanel()
     weatherAnim->setEndValue(QPoint(1080, 1200));
 
     QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
-    newsAnim->setDuration(waitingData);
+    newsAnim->setDuration(700);
     newsAnim->setStartValue(QPoint(1920,520));
     newsAnim->setEndValue(QPoint(1180, 520));
 

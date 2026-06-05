@@ -79,8 +79,8 @@ def analyze_emotion_and_play(frame):
         recommended_song = MUSIC_MAP.get(upper_emotion, "랜덤 추천 음악")
         print(f"✨ 분석된 감정: [{upper_emotion}] -> 추천 음악: [{recommended_song}]", flush=True)
 
-        send_to_qt(f"EMOTION_RESULT:{upper_emotion}")
-        send_to_qt(f"PLAY_SONG:{recommended_song}")
+        send_to_qt(f"KEYWORD:{upper_emotion}")
+        #send_to_qt(f"PLAY_SONG:{recommended_song}")
 
     except Exception as e:
         print(f"PYTHON_ERROR (DeepFace): {str(e)}", flush=True)
@@ -230,12 +230,12 @@ def gesture_processing_thread(hands):
                         if not swipe_locked:
                             if x_diff < -0.14:   
                                 print("◀ [스와이프] 다음 페이지(NEXT)", flush=True)
-                                send_to_qt("NEXT")
+                                send_to_qt("LEFT")
                                 last_swipe_time = now
                                 swipe_locked = True 
                             elif x_diff > 0.14:  
                                 print("▶ [스와이프] 이전 페이지(PREV)", flush=True)
-                                send_to_qt("PREV")
+                                send_to_qt("RIGHT")
                                 last_swipe_time = now
                                 swipe_locked = True 
                         else:
