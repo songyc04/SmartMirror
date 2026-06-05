@@ -14,6 +14,11 @@ QT_PORT = 9001
 qt_socket    = None
 qt_connected = False
 
+# ── 재생 상태 플래그 (Qt로부터 수신) ─────────────────────────────────────────
+# Qt 서버가 "PLAYING\n" 을 보내오면 True, "STOPPED\n" / "PAUSED\n" 이면 False
+is_playing      = False
+is_playing_lock = threading.Lock()
+
 # ── 감정별 맞춤 노래 맵핑 ─────────────────────────────────────────────────────
 MUSIC_MAP = {
     "HAPPY":    "신나는 댄스곡",
@@ -26,10 +31,11 @@ MUSIC_MAP = {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# [통신] Qt TCP 서버 연결 및 전송
+# [통신] Qt TCP 연결 / 전송 / 수신
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def connect_to_qt():
+    """Qt 서버에 연결될 때까지 재시도. 연결 성공 시 수신 스레드도 시작."""
     global qt_socket, qt_connected
     while True:
         try:
@@ -38,15 +44,58 @@ def connect_to_qt():
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(3.0)
                 s.connect((QT_IP, QT_PORT))
+                s.settimeout(None)          # 수신 스레드용 블로킹 모드 전환
                 qt_socket    = s
                 qt_connected = True
                 print("✅ C++ Qt 서버(9001)와 성공적으로 연결되었습니다!", flush=True)
+                # Qt → Python 상태 수신 스레드 시작
+                threading.Thread(target=qt_receive_thread, daemon=True).start()
                 break
         except Exception as e:
             print(f"❌ Qt 서버 연결 실패 ({e}). 2초 후 재시도합니다.", flush=True)
             qt_socket    = None
             qt_connected = False
             time.sleep(2)
+
+
+def qt_receive_thread():
+    """
+    Qt 서버가 보내는 상태 메시지를 수신해 is_playing 플래그를 갱신한다.
+
+    Qt 측에서 아래 형식으로 송신하면 됩니다:
+        "PLAYING\n"  → 음악 재생 중  (START 중복 차단 활성화)
+        "STOPPED\n"  → 정지 상태    (START 허용)
+        "PAUSED\n"   → 일시정지     (START 허용)
+    """
+    global qt_socket, qt_connected, is_playing
+    buf = ""
+    while True:
+        try:
+            chunk = qt_socket.recv(1024)
+            if not chunk:
+                raise ConnectionResetError("서버 연결 종료")
+            buf += chunk.decode("utf-8", errors="replace")
+            while "\n" in buf:
+                line, buf = buf.split("\n", 1)
+                line = line.strip()
+                if not line:
+                    continue
+                print(f"[Qt→Py] 수신: {line}", flush=True)
+                with is_playing_lock:
+                    if line == "PLAYING":
+                        is_playing = True
+                        print("🎵 재생 상태 확인 → START 중복 차단 활성화", flush=True)
+                    elif line in ("STOPPED", "PAUSED"):
+                        is_playing = False
+                        print("⏹️  정지/일시정지 확인 → START 허용", flush=True)
+        except Exception as e:
+            print(f"❌ Qt 수신 스레드 오류 ({e}). 재연결을 시도합니다.", flush=True)
+            with is_playing_lock:
+                is_playing = False
+            qt_socket    = None
+            qt_connected = False
+            threading.Thread(target=connect_to_qt, daemon=True).start()
+            break
 
 
 def send_to_qt(message):
@@ -73,8 +122,8 @@ def analyze_emotion_and_play(frame):
         result = DeepFace.analyze(img_path=small, actions=["emotion"], enforce_detection=False)
         if isinstance(result, list):
             result = result[0]
-        emotion    = result["dominant_emotion"].upper()
-        song       = MUSIC_MAP.get(emotion, "랜덤 추천 음악")
+        emotion = result["dominant_emotion"].upper()
+        song    = MUSIC_MAP.get(emotion, "랜덤 추천 음악")
         print(f"✨ 분석된 감정: [{emotion}] → 추천 음악: [{song}]", flush=True)
         send_to_qt(f"EMOTION_RESULT:{emotion}")
         send_to_qt(f"PLAY_SONG:{song}")
@@ -91,42 +140,36 @@ class SwipeDetector:
     최근 N 프레임의 손목 위치를 버퍼에 쌓아 스와이프를 감지한다.
 
     감지 조건 (모두 충족해야 트리거):
-      1. 수평 이동 거리(x_total) > SWIPE_MIN_DIST
-      2. 수평 편향:  |x_total| > SWIPE_AXIS_RATIO × |y_total|  (사선 스와이프 차단)
+      1. 수평 이동 거리(|x_total|) > SWIPE_MIN_DIST
+      2. 수평 편향: |x_total| > SWIPE_AXIS_RATIO × |y_total|  (사선 스와이프 차단)
       3. 쿨다운 경과
       4. 복귀 잠금 해제 상태
 
     복귀 잠금 해제 조건:
-      - 스와이프가 트리거된 방향의 반대 방향으로 RETURN_UNLOCK_DIST 이상 이동하면 해제
-      - 즉, 손이 충분히 되돌아가야 다음 스와이프를 허용한다
+      스와이프 트리거 방향의 반대 방향으로 RETURN_UNLOCK_DIST 이상 이동하면 해제.
+      손이 충분히 되돌아가야 다음 스와이프를 허용한다.
     """
 
-    # ── 튜닝 파라미터 ──────────────────────────────────────────────────────────
-    BUFFER_SIZE        = 12     # 분석에 사용할 프레임 수 (많을수록 느리지만 안정)
-    SWIPE_MIN_DIST     = 0.18   # 최소 수평 이동 거리 (정규화 좌표, 0~1)
-    SWIPE_AXIS_RATIO   = 2.0    # |x| 이 |y| 의 몇 배 이상이어야 수평 스와이프로 인정
-    SWIPE_COOLDOWN     = 1.2    # 연속 스와이프 최소 간격 (초)
-    RETURN_UNLOCK_DIST = 0.06   # 반대 방향으로 이 거리 이상 이동하면 잠금 해제
+    BUFFER_SIZE        = 12    # 분석할 프레임 수 (많을수록 안정, 적을수록 빠른 반응)
+    SWIPE_MIN_DIST     = 0.18  # 최소 수평 이동 거리 (정규화 0~1, 줄이면 더 짧은 스와이프 인식)
+    SWIPE_AXIS_RATIO   = 2.0   # 수평이 수직의 몇 배 이상이어야 스와이프로 인정
+    SWIPE_COOLDOWN     = 1.2   # 연속 스와이프 최소 간격 (초)
+    RETURN_UNLOCK_DIST = 0.06  # 반대 방향으로 이 거리 이상 복귀해야 잠금 해제
 
     def __init__(self):
-        self._buf            = deque(maxlen=self.BUFFER_SIZE)
-        self._last_time      = 0.0
-        self._locked         = False   # 스와이프 직후 잠금
-        self._locked_dir     = 0       # +1(NEXT) 또는 -1(PREV)
-        self._prev_x         = None    # 잠금 해제용 이전 x
+        self._buf        = deque(maxlen=self.BUFFER_SIZE)
+        self._last_time  = 0.0
+        self._locked     = False  # 스와이프 직후 잠금 상태
+        self._locked_dir = 0      # +1(NEXT) 또는 -1(PREV)
+        self._prev_x     = None   # 복귀 감지용 이전 x
 
-    def update(self, x: float, y: float) -> str | None:
-        """
-        새 프레임의 손목 좌표(정규화)를 받아 스와이프 명령 문자열을 반환한다.
-        트리거 없으면 None 반환.
-        """
+    def update(self, x: float, y: float):
         now = time.time()
         self._buf.append((x, y))
 
         # ── 복귀 잠금 해제 감시 ───────────────────────────────────────────────
         if self._locked and self._prev_x is not None:
             dx_return = x - self._prev_x
-            # 잠긴 방향(+1=NEXT=왼쪽) 반대로 충분히 이동했는지 확인
             if self._locked_dir == 1 and dx_return > self.RETURN_UNLOCK_DIST:
                 self._locked = False
                 print("🔓 [복귀 감지] NEXT 후 오른쪽 복귀 → 잠금 해제", flush=True)
@@ -135,7 +178,7 @@ class SwipeDetector:
                 print("🔓 [복귀 감지] PREV 후 왼쪽 복귀 → 잠금 해제", flush=True)
         self._prev_x = x
 
-        # ── 쿨다운·잠금 검사 ──────────────────────────────────────────────────
+        # ── 쿨다운 · 잠금 검사 ────────────────────────────────────────────────
         if self._locked:
             return None
         if now - self._last_time < self.SWIPE_COOLDOWN:
@@ -144,9 +187,9 @@ class SwipeDetector:
             return None
 
         # ── 버퍼 전체 이동 벡터 계산 ──────────────────────────────────────────
-        xs = [p[0] for p in self._buf]
-        ys = [p[1] for p in self._buf]
-        x_total = xs[-1] - xs[0]   # 양수 = 오른쪽(PREV), 음수 = 왼쪽(NEXT)
+        xs      = [p[0] for p in self._buf]
+        ys      = [p[1] for p in self._buf]
+        x_total = xs[-1] - xs[0]   # 음수 = 왼쪽(NEXT), 양수 = 오른쪽(PREV)
         y_total = ys[-1] - ys[0]
 
         # ── 이중 조건 검사 ────────────────────────────────────────────────────
@@ -167,27 +210,25 @@ class SwipeDetector:
 
         self._last_time = now
         self._locked    = True
-        self._buf.clear()           # 트리거 후 버퍼 초기화로 잔여 이동 제거
+        self._buf.clear()   # 잔여 이동이 재트리거되지 않도록 버퍼 초기화
         return cmd
 
     def reset(self):
-        """손이 화면에서 사라질 때 상태 초기화."""
+        """손이 화면에서 사라질 때 버퍼만 초기화. 잠금은 유지(복귀 판정 우선)."""
         self._buf.clear()
         self._prev_x = None
-        # 잠금은 유지: 손이 다시 나타나도 복귀 판정 후에야 해제됨
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # [제스처] 백그라운드 처리 스레드
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# 제스처 파라미터
 VOLUME_COOLDOWN    = 0.2
 HOLD_REQUIRED_TIME = 1.5
 
-gesture_lock      = threading.Lock()
-latest_rgb_frame  = None
-gesture_running   = True
+gesture_lock     = threading.Lock()
+latest_rgb_frame = None
+gesture_running  = True
 
 
 def gesture_processing_thread(hands):
@@ -217,7 +258,7 @@ def gesture_processing_thread(hands):
                 lm = hand_landmarks.landmark
 
                 # ── 손가락 펴짐 카운트 ───────────────────────────────────────
-                base_open = [lm[tip].y < lm[pip].y for tip, pip in [(8,6),(12,10),(16,14),(20,18)]]
+                base_open  = [lm[tip].y < lm[pip].y for tip, pip in [(8,6),(12,10),(16,14),(20,18)]]
                 four_count = sum(base_open)
 
                 if four_count == 0:
@@ -239,8 +280,14 @@ def gesture_processing_thread(hands):
                     if start_hold_start == 0:
                         start_hold_start = now
                     elif now - start_hold_start >= HOLD_REQUIRED_TIME and not start_triggered:
-                        print("✋ START", flush=True)
-                        send_to_qt("START")
+                        # ▶ 재생 중이면 START 무시 — 노래 처음부터 재시작 방지
+                        with is_playing_lock:
+                            playing_now = is_playing
+                        if playing_now:
+                            print("⚠️  [START 차단] 현재 재생 중 → 중복 START 무시", flush=True)
+                        else:
+                            print("✋ START", flush=True)
+                            send_to_qt("START")
                         start_triggered = True
 
                 # ── STOP (1개) ────────────────────────────────────────────────
@@ -254,7 +301,7 @@ def gesture_processing_thread(hands):
                         send_to_qt("STOP")
                         stop_triggered = True
 
-                # ── END (0개/주먹) ────────────────────────────────────────────
+                # ── END (0개 / 주먹) ──────────────────────────────────────────
                 elif is_end:
                     start_hold_start = stop_hold_start = 0.0
                     start_triggered  = stop_triggered  = False
@@ -284,8 +331,7 @@ def gesture_processing_thread(hands):
                 prev_y = cur_y
 
                 # ── 스와이프 (수평 이동) ─────────────────────────────────────
-                cur_x = lm[0].x
-                cmd = swipe.update(cur_x, lm[0].y)
+                cmd = swipe.update(lm[0].x, lm[0].y)
                 if cmd:
                     send_to_qt(cmd)
 
