@@ -79,7 +79,7 @@ def analyze_emotion_and_play(frame):
         recommended_song = MUSIC_MAP.get(upper_emotion, "랜덤 추천 음악")
         print(f"✨ 분석된 감정: [{upper_emotion}] -> 추천 음악: [{recommended_song}]", flush=True)
 
-        send_to_qt(f"KEYWORD:{upper_emotion}")
+        send_to_qt(f"KEYWORD:{MUSIC_MAP.get(upper_emotion)}")
         #send_to_qt(f"PLAY_SONG:{recommended_song}")
 
     except Exception as e:
@@ -311,13 +311,12 @@ def main():
         if qt_connected and not initial_scan_done:
             if scan_start_time == 0:
                 scan_start_time = now
-                print("\n⏳ [이벤트] Qt 연동 완료! 5초 후 표정을 스캔합니다...", flush=True)
             elif now - scan_start_time >= 5.0:
                 print("📸 찰칵! 표정 데이터를 캡처했습니다.", flush=True)
                 threading.Thread(target=analyze_emotion_and_play, args=(frame.copy(),), daemon=True).start()
                 initial_scan_done = True 
 
-        # cv2.imshow("SmartMirror Camera", frame)
+        #cv2.imshow("SmartMirror Camera", frame)
 
         if cv2.waitKey(10) & 0xFF == ord('q'):
             print("\n⏹️ 사용자에 의해 카메라 모니터링이 종료되었습니다.", flush=True)

@@ -12,6 +12,7 @@
 #include <QPalette>
 #include <QColor>
 #include <QProcessEnvironment>
+#include <random>
 //#include <QKeyEvent>    //테스트용
 
 const quint16 ARDUINO_PORT = 9000;
@@ -330,7 +331,7 @@ void MainWindow::processData(const QString &data)
     if (data == "ON")
     {
         if (emotionProcess && emotionProcess->state() == QProcess::NotRunning) {
-            emotionProcess->setWorkingDirectory("/home/jt-user/test/opencv");
+            emotionProcess->setWorkingDirectory("/home/jt-user/SmartMirror/opencv");
 
             QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
             // 기존: contains 체크 후 삽입 → 이미 잘못된 DISPLAY일 수도 있음
@@ -346,7 +347,7 @@ void MainWindow::processData(const QString &data)
                 // Qt는 계속 살아있음
             });
 
-            emotionProcess->start("/home/jt-user/deepface_env/bin/python3",
+            emotionProcess->start("/home/jt-user/py310/bin/python3",
             QStringList() << "opencv_latest.py");
 
             qDebug() << "아두이노 ON: 파이썬 감정 분석 스크립트를 시작합니다.";
@@ -462,11 +463,19 @@ void MainWindow::gestureDetected(const QString &gesture)
             // [방어 코드] 키워드가 비어있을 경우를 대비한 예외 처리
             if (keyword == NULL) keyword = "잔잔한";
 
+            // 1부터 10까지 난수 생성
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<int> dis(1, 10);
+            int targetRank = dis(gen);
+            qDebug() << "검색 키워드: " << keyword;
+            qDebug() << "조회수 정렬 :" << targetRank << "등 노래 추출 완료";
+
             // 파이썬 3.10 가상환경을 사용하여 조회수 정렬 수행
             QString cmd = QString("/home/jt-user/py310/bin/yt-dlp \"ytsearch")
                           + QString::number(searchCount) + ":" + keyword + " 플레이리스트\" "
                           + "--flat-playlist --print \"%(view_count)012d %(url)s\" "
-                          + "| sort -r | head -n 1 | awk '{print $2}'";
+                          + "| sort -r | head -n " + QString::number(targetRank) + " | awk '{print $2}'";
             // 새로운 연결을 맺기 전 기존 finished 연결을 무조건 초기화
             ytDlpProcess->disconnect();
 
@@ -480,15 +489,23 @@ void MainWindow::gestureDetected(const QString &gesture)
                         return;
                     }
 
-                    // 파이프라인을 거쳐 나온 최종 결과값
-                    QString highViewUrl = QString::fromUtf8(ytDlpProcess->readAllStandardOutput()).trimmed();
+                    ytDlpProcess->readAllStandardError();
 
-                    if (highViewUrl.isEmpty() || !highViewUrl.startsWith("http")) {
-                        qWarning() << "⚠️ 유효한 유튜브 주소를 획득하지 못했습니다. 수신 데이터:" << highViewUrl;
+                    // 파이프라인을 거쳐 나온 최종 결과값
+                    QString audioUrl = QString::fromUtf8(ytDlpProcess->readAllStandardOutput()).trimmed();
+
+                    if (audioUrl.contains('\n'))
+                    {
+                        audioUrl = audioUrl.section('\n', -1, -1).trimmed();
+                    }
+
+
+                    if (audioUrl.isEmpty() || !audioUrl.startsWith("http")) {
+                        qWarning() << "⚠️ 유효한 유튜브 주소를 획득하지 못했습니다. 수신 데이터:" << audioUrl;
                         return;
                     }
 
-                    qDebug() << "🎯 5개 중 조회수가 가장 높은 영상 URL 추출 성공:" << highViewUrl;
+                    qDebug() << searchCount << "개 중 조회수가 가장 높은 영상 URL 추출 성공:" << audioUrl;
 
                     // mpv가 돌고 있다면 안전하게 사살
                     if (mpvProcess->state() != QProcess::NotRunning) {
@@ -510,7 +527,7 @@ void MainWindow::gestureDetected(const QString &gesture)
                             << "--input-ipc-server=/tmp/mpv-socket"
                             << "--gapless-audio=yes"
                             << "--ao=alsa"
-                            << highViewUrl; // URL은 맨 뒤로 배치
+                            << audioUrl; // URL은 맨 뒤로 배치
 
                     qDebug() << "🚀 [mpv 구동 명령어]: /usr/bin/mpv" << mpvArgs.join(" ");
 
