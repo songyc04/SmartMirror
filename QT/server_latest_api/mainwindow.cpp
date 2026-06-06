@@ -110,14 +110,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     // weather panel(초기위치)
     WeatherWidget = new WeatherPanel(ui->centralWidget);
-    WeatherWidget->setGeometry(1100, 1200, 800, 500);
+    WeatherWidget->setGeometry(900, 1200, 1023, 500);
     WeatherWidget->hide();
     QTimer::singleShot(
         1000,
         this,
         [=]()
         {
-            WeatherWidget->move(1080, 460);
+            WeatherWidget->move(900, 460);
             WeatherWidget->show();
             blackOverlay->raise();
         });
@@ -146,14 +146,11 @@ MainWindow::MainWindow(QWidget *parent)
     newsWidget->setGeometry(1920, 520, 760, 620);
     newsWidget->hide();
 
-    musicBar=new MusicBar(this);
-    //musicBar->resize(600, 220);
-    //int mX = (1920 - 600) / 2;
-    //int mY = 1080 - 220 - 40;
-    //musicBar->setGeometry(mX, mY, 600, 220);
+    musicBar=new MusicBar(ui->centralWidget);
     musicBar->resize(900, 220);
     musicBar->setGeometry(510, 430, 900, 220);
     musicBar->show();
+    musicBar->stackUnder(blackOverlay);
 }
 
 MainWindow::~MainWindow()
@@ -591,8 +588,8 @@ void MainWindow::showWeatherPanel()
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
-    weatherAnim->setStartValue(QPoint(1080,1200));
-    weatherAnim->setEndValue(QPoint(1080, 460));
+    weatherAnim->setStartValue(QPoint(900,1200));
+    weatherAnim->setEndValue(QPoint(900, 460));
 
     newsAnim->start(QAbstractAnimation::DeleteWhenStopped);
     weatherAnim->start(QAbstractAnimation::DeleteWhenStopped);
@@ -621,8 +618,8 @@ void MainWindow::showNewsPanel()
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
-    weatherAnim->setStartValue(QPoint(1080,460));
-    weatherAnim->setEndValue(QPoint(1080, 1200));
+    weatherAnim->setStartValue(QPoint(900,460));
+    weatherAnim->setEndValue(QPoint(900, 1200));
 
     QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
     newsAnim->setDuration(700);

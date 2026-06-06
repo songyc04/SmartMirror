@@ -63,6 +63,14 @@ WeatherPanel::WeatherPanel(QWidget *parent)
             &QNetworkAccessManager::finished,
             this, &WeatherPanel::onShortTermReply);
 
+    dailyManager = new QNetworkAccessManager(this);
+    connect(dailyManager,
+            &QNetworkAccessManager::finished,
+            this,
+            &WeatherPanel::onDailyForecastReply);
+    //지역설정
+    setRegion(1);
+
     // ── 패널 스타일 ──────────────────────────
     this->setStyleSheet(
         "QWidget {"
@@ -85,7 +93,7 @@ WeatherPanel::WeatherPanel(QWidget *parent)
     ui->tableForecast->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     // 열 너비
-    ui->tableForecast->setColumnWidth(0, 90);
+    ui->tableForecast->setColumnWidth(0, 80);
     ui->tableForecast->horizontalHeader()
         ->setSectionResizeMode(0, QHeaderView::Interactive);
     for (int i = 1; i < 8; i++)
@@ -109,6 +117,9 @@ WeatherPanel::WeatherPanel(QWidget *parent)
     ui->tableForecast->setItem(0, 0, new QTableWidgetItem("날씨"));
     ui->tableForecast->setItem(1, 0, new QTableWidgetItem("최고"));
     ui->tableForecast->setItem(2, 0, new QTableWidgetItem("최저"));
+    ui->tableForecast->item(0, 0)->setForeground(QColor(255, 255, 255));
+    ui->tableForecast->item(1, 0)->setForeground(QColor(255, 255, 255));
+    ui->tableForecast->item(2, 0)->setForeground(QColor(255, 255, 255));
 
     QFont boldFont;
     boldFont.setBold(true);
@@ -162,12 +173,6 @@ WeatherPanel::WeatherPanel(QWidget *parent)
     shadow->setOffset(0, 5);
     shadow->setColor(QColor(0, 0, 0, 80));
     ui->forecastCard->setGraphicsEffect(shadow);
-
-    // ── API 요청 시작 ────────────────────────
-    requestWeather();
-    requestMidLand();
-    requestMidTemp();
-    requestShortTerm();
 }
 
 WeatherPanel::~WeatherPanel()
@@ -192,11 +197,15 @@ void WeatherPanel::requestWeather()
             "VilageFcstInfoService_2.0/"
             "getUltraSrtNcst?"
             "pageNo=1&numOfRows=1000&dataType=JSON"
-            "&base_date=%1&base_time=%2"
-            "&nx=60&ny=127"
+            "&base_date=%1"
+            "&base_time=%2"
+            "&nx=%3"
+            "&ny=%4"
             "&authKey=umH6GTnpT9-h-hk56Z_fKA")
             .arg(baseDate)
-            .arg(baseTime);
+            .arg(baseTime)
+            .arg(currentRegion.nx)
+            .arg(currentRegion.ny);
 
     qDebug() << "초단기실황 URL:" << url;
     manager->get(QNetworkRequest(QUrl(url)));
@@ -215,8 +224,10 @@ void WeatherPanel::requestMidLand()
             "https://apihub.kma.go.kr/api/typ02/openApi/"
             "MidFcstInfoService/getMidLandFcst?"
             "pageNo=1&numOfRows=10&dataType=JSON"
-            "&regId=11B00000&tmFc=%1"
+            "&regId=%1"
+            "&tmFc=%2"
             "&authKey=umH6GTnpT9-h-hk56Z_fKA")
+            .arg(currentRegion.midLandRegId)
             .arg(tmFc);
 
     qDebug() << "MidLand URL:" << url;
@@ -236,8 +247,10 @@ void WeatherPanel::requestMidTemp()
             "https://apihub.kma.go.kr/api/typ02/openApi/"
             "MidFcstInfoService/getMidTa?"
             "pageNo=1&numOfRows=10&dataType=JSON"
-            "&regId=11B10101&tmFc=%1"
+            "&regId=%1"
+            "&tmFc=%2"
             "&authKey=umH6GTnpT9-h-hk56Z_fKA")
+            .arg(currentRegion.midTempRegId)
             .arg(tmFc);
 
     qDebug() << "MidTemp URL:" << url;
@@ -256,6 +269,33 @@ void WeatherPanel::requestShortTerm()
 
     qDebug() << "ShortTerm URL:" << url;
     shortTermManager->get(QNetworkRequest(QUrl(url)));
+}
+
+//오늘의 날씨 최고,최저 온도 요청
+void WeatherPanel::requestDailyForecast()
+{
+    QString baseDate =
+        QDate::currentDate().toString("yyyyMMdd");
+
+    QString url =
+        QString(
+            "https://apihub.kma.go.kr/api/typ02/openApi/"
+            "VilageFcstInfoService_2.0/getVilageFcst?"
+            "pageNo=1"
+            "&numOfRows=1000"
+            "&dataType=JSON"
+            "&base_date=%1"
+            "&base_time=0500"
+            "&nx=%2"
+            "&ny=%3"
+            "&authKey=umH6GTnpT9-h-hk56Z_fKA")
+            .arg(baseDate)
+            .arg(currentRegion.nx)
+            .arg(currentRegion.ny);
+
+    qDebug() << "DailyForecast URL:" << url;
+
+    dailyManager->get(QNetworkRequest(QUrl(url)));
 }
 
 // ─────────────────────────────────────────────
@@ -318,9 +358,10 @@ void WeatherPanel::onWeatherReply(QNetworkReply *reply)
         QString::number(temp, 'f', 1) + "°C");
     ui->labelWeather->setText(weatherText);
     ui->labelDetail->setText(
-        QString("습도 %1%%   강수 %2mm   풍속 %3m/s")
+        QString("습도 %1%   강수 %2mm   풍속 %3m/s")
             .arg(humidity).arg(rain).arg(wind));
-    ui->labelLocation->setText("현재 위치 : 서울");
+    ui->labelLocation->setText(
+        "현재 위치 : " + currentRegion.name);
 
     reply->deleteLater();
 }
@@ -422,13 +463,14 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
     qDebug() << "ShortTerm 응답 (첫 500자):" << text.left(500);
 
     // 서울 지역 코드
-    const QString targetRegId = "11B10101";
+    const QString targetRegId =
+        currentRegion.shortTermRegId;
 
     // offset별 낮 최고기온, 밤 최저기온, SKY 코드 저장
     // key: offset(1=내일, 2=모레, 3=D+3)
     struct DayData {
         int    maxTemp  = -999;
-        int    minTemp  = -999;
+        int    minTemp  = 999;
         QString skyIcon = "";
     };
     QMap<int, DayData> dayMap;
@@ -466,14 +508,25 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
         int     hour       = hourStr.toInt();
         int     offset     = today.daysTo(targetDate); // 0=오늘, 1=내일, ...
 
-        if (offset < 1 || offset > 3)
-            continue;  // D+1 ~ D+3 만 처리
+        if (offset < 0 || offset > 3)
+            continue;  // D+0 ~ D+3 만 처리
 
         QString skyCode = cols[14].trimmed(); // SKY
         int     ta      = cols[12].trimmed().toInt(); // TA
 
         DayData &dd = dayMap[offset];
 
+        if (ta != -99)
+        {
+            dd.maxTemp = qMax(dd.maxTemp, ta);
+            dd.minTemp = qMin(dd.minTemp, ta);
+        }
+
+        if (dd.skyIcon.isEmpty())
+        {
+            dd.skyIcon = skyCodeToIcon(skyCode);
+        }
+/*
         // 낮(12시) → 최고기온 + 아이콘
         if (hour == 12)
         {
@@ -490,16 +543,16 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
             // 아이콘이 아직 없으면 밤 SKY로 대체
             if (dd.skyIcon.isEmpty())
                 dd.skyIcon = skyCodeToIcon(skyCode);
-        }
+        }*/
     }
 
     // ── 테이블 col 1~3 채우기 (D+1=col2, D+2=col3, D+3=col4) ──
     // col 1 = 오늘, col 2 = 내일(offset1), col 3 = 모레(offset2), col 4 = D+3(offset3)
     const QStringList weekNames = {"일","월","화","수","목","금","토"};
 
-    for (int offset = 1; offset <= 3; offset++)
+    for (int offset = 0; offset <= 3; offset++)
     {
-        int col = 1 + offset; // col2, col3, col4
+        int col =1+offset; // col1=오늘, col2, col3, col4
 
         QDate targetDate = today.addDays(offset);
         QString dayName  = weekNames[targetDate.dayOfWeek() % 7];
@@ -510,9 +563,9 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
 
         if (!dayMap.contains(offset))
         {
-            ui->tableForecast->setItem(0, col, new QTableWidgetItem(""));
-            ui->tableForecast->setItem(1, col, new QTableWidgetItem("-"));
-            ui->tableForecast->setItem(2, col, new QTableWidgetItem("-"));
+            if (col != 0) { ui->tableForecast->setItem(0, col, new QTableWidgetItem("")); }
+            if (col != 0) { ui->tableForecast->setItem(1, col, new QTableWidgetItem("-")); }
+            if (col != 0) { ui->tableForecast->setItem(2, col, new QTableWidgetItem("-")); }
             continue;
         }
 
@@ -520,15 +573,43 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
 
         QString icon    = dd.skyIcon.isEmpty() ? "☁" : dd.skyIcon;
         QString maxStr  = (dd.maxTemp != -999) ? QString::number(dd.maxTemp) + "°" : "-";
-        QString minStr  = (dd.minTemp != -999) ? QString::number(dd.minTemp) + "°" : "-";
+        //QString minStr  = (dd.minTemp != -999) ? QString::number(dd.minTemp) + "°" : "-";
+        QString minStr;
 
-        ui->tableForecast->setItem(0, col, new QTableWidgetItem(icon));
-        ui->tableForecast->setItem(1, col, new QTableWidgetItem(maxStr));
-        ui->tableForecast->setItem(2, col, new QTableWidgetItem(minStr));
+        if(offset == 0 && todayMinTemp != -999)
+        {
+            minStr = QString::number(todayMinTemp) + "°";
+        }
+        else
+        {
+            minStr =
+                (dd.minTemp != 999)
+                ? QString::number(dd.minTemp) + "°"
+                : "-";
+        }
+
+        auto setCell = [this](int row, int col, const QString &text) {
+            QTableWidgetItem *it = new QTableWidgetItem(text);
+            if (row == 0) it->setForeground(QColor(255, 255, 255));
+            else if (row == 1) it->setForeground(QColor(220, 50, 50));
+            else if (row == 2) it->setForeground(QColor(80, 160, 255));
+            if (col != 0) { ui->tableForecast->setItem(row, col, it); }
+        };
+        setCell(0, col, icon);
+        setCell(1, col, maxStr);
+        setCell(2, col, minStr);
 
         qDebug() << "ShortTerm col" << col << "D+" << offset
                  << targetDate.toString("MM/dd") << dayName
                  << "max:" << maxStr << "min:" << minStr << "icon:" << icon;
+    }
+    for(int c = 0; c < ui->tableForecast->columnCount(); c++)
+    {
+        auto h = ui->tableForecast->horizontalHeaderItem(c);
+
+        qDebug() << "col =" << c
+                 << "header ="
+                 << (h ? h->text() : "NULL");
     }
 }
 
@@ -541,39 +622,29 @@ void WeatherPanel::tryFillMidForecast()
         return;
 
     const QStringList weekNames = {"일","월","화","수","목","금","토"};
-
     QDate today = QDate::currentDate();
 
-    // ── 다음주 수요일 계산 ───────────────────
-    int todayDow       = today.dayOfWeek();
-    int daysToThisWed  = (3 - todayDow + 7) % 7;
-    int daysToNextWed  = (daysToThisWed == 0) ? 7 : (daysToThisWed + 7);
-
-    // col 계산: 오늘=col1, 내일=col2 ... 오늘로부터 N일 후=col(N+1)
-    // D+1~D+3 은 onShortTermReply 에서 채우므로 D+4(col5)부터 처리
-    for (int offset = 4; offset <= daysToNextWed && offset < 7; offset++)
+    // 중기예보는 D+4(offset=4) ~ D+10(offset=10) 제공
+    // col 1=오늘(D+0), col 2=D+1, ..., col 5=D+4, col 6=D+5, col 7=D+6
+    for (int offset = 4; offset <= 7; offset++)
     {
-        QDate target = today.addDays(offset);
-        int   col    = 1 + offset;
+        int col = 1 + offset; // col 5~8 인데 테이블은 col 7까지라 범위 체크
+        if (col >= ui->tableForecast->columnCount())
+            break;
 
+        QDate target = today.addDays(offset);
         QString dayName = weekNames[target.dayOfWeek() % 7];
 
         ui->tableForecast->setHorizontalHeaderItem(
             col, new QTableWidgetItem("  " + dayName));
 
+        // 키 이름: taMax4, taMax5 ... (패딩 없음)
         int maxTemp = midTempData[QString("taMax%1").arg(offset)].toInt();
         int minTemp = midTempData[QString("taMin%1").arg(offset)].toInt();
 
-        if (maxTemp == 0 && minTemp == 0)
-        {
-            ui->tableForecast->setItem(0, col, new QTableWidgetItem(""));
-            ui->tableForecast->setItem(1, col, new QTableWidgetItem("-"));
-            ui->tableForecast->setItem(2, col, new QTableWidgetItem("-"));
-            continue;
-        }
-
         QString wfAm = midLandData[QString("wf%1Am").arg(offset)].toString();
         QString wfPm = midLandData[QString("wf%1Pm").arg(offset)].toString();
+        // D+8 이상은 Am/Pm 없이 wf8, wf9... 형태
         if (wfAm.isEmpty())
             wfAm = midLandData[QString("wf%1").arg(offset)].toString();
         if (wfPm.isEmpty())
@@ -586,22 +657,88 @@ void WeatherPanel::tryFillMidForecast()
 
         QString icon = weatherToIcon(weather);
 
-        ui->tableForecast->setItem(0, col, new QTableWidgetItem(icon));
-        ui->tableForecast->setItem(1, col, new QTableWidgetItem(
-            QString::number(maxTemp) + "°"));
-        ui->tableForecast->setItem(2, col, new QTableWidgetItem(
-            QString::number(minTemp) + "°"));
+        auto setCell = [this](int row, int col, const QString &text) {
+            QTableWidgetItem *it = new QTableWidgetItem(text);
+            if (row == 0)      it->setForeground(QColor(255, 255, 255));
+            else if (row == 1) it->setForeground(QColor(220, 50, 50));
+            else if (row == 2) it->setForeground(QColor(80, 160, 255));
+            ui->tableForecast->setItem(row, col, it);
+        };
+
+        setCell(0, col, icon);
+        setCell(1, col, QString::number(maxTemp) + "°");
+        setCell(2, col, QString::number(minTemp) + "°");
 
         qDebug() << "MidForecast col" << col << "D+" << offset
                  << target.toString("MM/dd") << dayName
                  << "max:" << maxTemp << "min:" << minTemp;
     }
-
-    // 오늘(col1) 헤더 설정
-    QString todayName = weekNames[today.dayOfWeek() % 7];
-    ui->tableForecast->setHorizontalHeaderItem(
-        1, new QTableWidgetItem("  " + todayName));
 }
+
+//오늘의 테이블 체우기
+void WeatherPanel::onDailyForecastReply(QNetworkReply *reply)
+{
+    QByteArray data = reply->readAll();
+
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+
+    if (doc.isNull())
+    {
+        reply->deleteLater();
+        return;
+    }
+
+    QJsonArray items =
+        doc.object()["response"]
+           .toObject()["body"]
+           .toObject()["items"]
+           .toObject()["item"]
+           .toArray();
+
+    todayMinTemp = 999;
+    todayMaxTemp = -999;
+
+    QString today =
+        QDate::currentDate().toString("yyyyMMdd");
+
+    for (const QJsonValue &v : items)
+    {
+        QJsonObject obj = v.toObject();
+
+        QString category =
+            obj["category"].toString();
+
+        QString fcstDate =
+            obj["fcstDate"].toString();
+
+        if (fcstDate != today)
+            continue;
+
+        if (category == "TMP")
+        {
+            int temp =
+                obj["fcstValue"].toString().toInt();
+
+            todayMinTemp =
+                qMin(todayMinTemp, temp);
+
+            todayMaxTemp =
+                qMax(todayMaxTemp, temp);
+        }
+    }
+
+    if (todayMinTemp == 999)
+        todayMinTemp = -999;
+
+    qDebug()
+        << "오늘 최저:" << todayMinTemp
+        << "오늘 최고:" << todayMaxTemp;
+
+    reply->deleteLater();
+
+    requestShortTerm();
+}
+
 
 // ─────────────────────────────────────────────
 // 밝기 적용
@@ -645,4 +782,118 @@ void WeatherPanel::setTextBrightness(int value)
         if (header)
             header->setForeground(textColor);
     }
+}
+
+void WeatherPanel::setRegion(int regionCode)
+{
+    switch(regionCode)
+    {
+    case 1: // 서울
+        currentRegion =
+        {
+            "서울",
+            60,
+            127,
+            "11B10101",
+            "11B00000",
+            "11B10101"
+        };
+        break;
+
+    case 2: // 부산
+        currentRegion =
+        {
+            "부산",
+            98,
+            76,
+            "11H20201",
+            "11H20000",
+            "11H20201"
+        };
+        break;
+
+    case 3: // 대구
+        currentRegion =
+        {
+            "대구",
+            89,
+            90,
+            "11H10701",
+            "11H10000",
+            "11H10701"
+        };
+        break;
+
+    case 4: // 인천
+        currentRegion =
+        {
+            "인천",
+            55,
+            124,
+            "11B20201",
+            "11B00000",
+            "11B20201"
+        };
+        break;
+
+    case 5: // 광주
+        currentRegion =
+        {
+            "광주",
+            58,
+            74,
+            "11F20501",
+            "11F20000",
+            "11F20501"
+        };
+        break;
+
+    case 6: // 대전
+        currentRegion =
+        {
+            "대전",
+            67,
+            100,
+            "11C20401",
+            "11C20000",
+            "11C20401"
+        };
+        break;
+
+    case 7: // 울산
+        currentRegion =
+        {
+            "울산",
+            102,
+            84,
+            "11H20101",
+            "11H10000",
+            "11H20101"
+        };
+        break;
+
+    case 8: // 제주
+        currentRegion =
+        {
+            "제주",
+            52,
+            38,
+            "11G00201",
+            "11G00000",
+            "11G00201"
+        };
+        break;
+
+    default:
+        return;
+    }
+
+    ui->labelLocation->setText(
+        "현재 위치 : " + currentRegion.name);
+
+    requestWeather();
+    requestDailyForecast();
+    requestShortTerm();
+    requestMidLand();
+    requestMidTemp();
 }

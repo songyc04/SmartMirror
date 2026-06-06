@@ -11,6 +11,16 @@ namespace Ui {
 class WeatherPanel;
 }
 
+struct RegionInfo
+{
+    QString name;
+    int nx;
+    int ny;
+    QString shortTermRegId;
+    QString midLandRegId;
+    QString midTempRegId;
+};
+
 class WeatherPanel : public QWidget
 {
     Q_OBJECT
@@ -20,12 +30,14 @@ public:
     ~WeatherPanel();
 
     void setTextBrightness(int value);
+    void setRegion(int regionCode);
 
 private slots:
     void onWeatherReply(QNetworkReply *reply);
     void onMidLandReply(QNetworkReply *reply);
     void onMidTempReply(QNetworkReply *reply);
-    void onShortTermReply(QNetworkReply *reply);   // ← 추가
+    void onShortTermReply(QNetworkReply *reply);
+    void onDailyForecastReply(QNetworkReply *reply);
 
 private:
     Ui::WeatherPanel *ui;
@@ -33,19 +45,27 @@ private:
     QNetworkAccessManager *manager;
     QNetworkAccessManager *midLandManager;
     QNetworkAccessManager *midTempManager;
-    QNetworkAccessManager *shortTermManager;       // ← 추가
+    QNetworkAccessManager *shortTermManager;
+    QNetworkAccessManager *dailyManager;
 
     void requestWeather();
     void requestMidLand();
     void requestMidTemp();
-    void requestShortTerm();                       // ← 추가
+    void requestShortTerm();
+    void requestDailyForecast();
 
     void tryFillMidForecast();
 
     QJsonObject midLandData;
     QJsonObject midTempData;
 
+    RegionInfo currentRegion;
+
     double currentTemp = 0.0;
+    int todayMinTemp = -999;
+    int todayMaxTemp = -999;
 };
+
+
 
 #endif
