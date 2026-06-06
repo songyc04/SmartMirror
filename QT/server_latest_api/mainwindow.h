@@ -10,6 +10,7 @@
 #include <QPropertyAnimation>
 #include "weatherpanel.h"
 #include "newspanel.h"
+#include "musicbar.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -25,8 +26,9 @@ public:
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
+
     //테스트용
-    //void keyPressEvent(QKeyEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
 
 private slots:
     void updateTime();
@@ -51,6 +53,8 @@ private:
     QProcess       *ytDlpProcess;
     QProcess       *mpvProcess;
     QProcess       *emotionProcess;
+
+    MusicBar *musicBar;
 
     NewsPanel      *newsWidget;
 

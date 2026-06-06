@@ -7,6 +7,7 @@
 QT       += core gui
 QT       += core gui network
 QT += network
+QT += widgets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -29,14 +30,19 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
     weatherpanel.cpp \
-    newspanel.cpp
+    newspanel.cpp \
+    musicbar.cpp \
+    wavewidget.cpp
 
 HEADERS += \
         mainwindow.h \
     weatherpanel.h \
-    newspanel.h
+    newspanel.h \
+    musicbar.h \
+    wavewidget.h
 
 FORMS += \
         mainwindow.ui \
     weatherpanel.ui \
-    newspanel.ui
+    newspanel.ui \
+    musicbar.ui

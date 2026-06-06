@@ -93,8 +93,8 @@ void NewsPanel::onNewsReply(
     mainLayout->setSpacing(3);
 
     mainLayout->setContentsMargins(0,0,0,0);
-
-    for(int i = 0; i < 3; i++)
+    int count = qMin(3, items.size());
+    for(int i = 0; i < count; i++)
     {
         QJsonObject item =
             items[i].toObject();

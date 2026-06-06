@@ -5,6 +5,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QJsonObject>
+#include <QTextCodec>
 
 namespace Ui {
 class WeatherPanel;
@@ -22,34 +23,29 @@ public:
 
 private slots:
     void onWeatherReply(QNetworkReply *reply);
-    void onForecastReply(QNetworkReply *reply);
-
     void onMidLandReply(QNetworkReply *reply);
     void onMidTempReply(QNetworkReply *reply);
+    void onShortTermReply(QNetworkReply *reply);   // ← 추가
 
 private:
     Ui::WeatherPanel *ui;
 
     QNetworkAccessManager *manager;
-    QNetworkAccessManager *forecastManager;
-
-    // 중기예보용
     QNetworkAccessManager *midLandManager;
     QNetworkAccessManager *midTempManager;
+    QNetworkAccessManager *shortTermManager;       // ← 추가
 
-    void requestWeather(QString city);
-    void requestForecast();
-
+    void requestWeather();
     void requestMidLand();
     void requestMidTemp();
+    void requestShortTerm();                       // ← 추가
 
-    QString koreanCityName(QString city);
+    void tryFillMidForecast();
 
-    // 중기예보 데이터 저장
     QJsonObject midLandData;
     QJsonObject midTempData;
 
-    void fillMidForecast();
+    double currentTemp = 0.0;
 };
 
 #endif
