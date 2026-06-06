@@ -12,7 +12,7 @@
 #include <QPalette>
 #include <QColor>
 #include <QProcessEnvironment>
-#include <QKeyEvent>    //테스트용
+//#include <QKeyEvent>    //테스트용
 
 const quint16 ARDUINO_PORT = 9000;
 const quint16 GESTURE_PORT = 9001;
@@ -104,9 +104,9 @@ MainWindow::MainWindow(QWidget *parent)
     blackOverlay = new QFrame(ui->centralWidget);
     blackOverlay->setGeometry(ui->centralWidget->rect());
     blackOverlay->setStyleSheet("background-color:black;");
-    //blackOverlay->raise();
-    //blackOverlay->show(); // 시작할 때는 화면 켜진 상태
-    blackOverlay->hide();
+    blackOverlay->raise();
+    blackOverlay->show(); // 시작할 때는 화면 켜진 상태
+    //blackOverlay->hide();
 
     // weather panel(초기위치)
     WeatherWidget = new WeatherPanel(ui->centralWidget);
@@ -154,8 +154,6 @@ MainWindow::MainWindow(QWidget *parent)
     musicBar->resize(900, 220);
     musicBar->setGeometry(510, 430, 900, 220);
     musicBar->show();
-    musicBar->raise();
-
 }
 
 MainWindow::~MainWindow()
@@ -639,7 +637,7 @@ void MainWindow::showNewsPanel()
         animationRunning = false;
     });
 }
-
+/*
 //테스트용
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
@@ -658,3 +656,4 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         break;
     }
 }
+*/
