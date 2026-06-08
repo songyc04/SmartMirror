@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+
 #include <QTimer>
 #include <QDateTime>
 #include <QLocale>
@@ -13,7 +14,7 @@
 #include <QColor>
 #include <QProcessEnvironment>
 #include <random>
-#include <QKeyEvent>    //테스트용
+//#include <QKeyEvent>    //테스트용
 
 const quint16 ARDUINO_PORT = 9000;
 const quint16 GESTURE_PORT = 9001;
@@ -111,14 +112,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     // weather panel(초기위치)
     WeatherWidget = new WeatherPanel(ui->centralWidget);
-    WeatherWidget->setGeometry(980, 1200, 900, 500);
+    WeatherWidget->setGeometry(900, 1200, 1023, 500);
     WeatherWidget->hide();
     QTimer::singleShot(
         1000,
         this,
         [=]()
         {
-            WeatherWidget->move(980, 500);
+            WeatherWidget->move(900, 460);
             WeatherWidget->show();
             blackOverlay->raise();
         });
@@ -128,29 +129,27 @@ MainWindow::MainWindow(QWidget *parent)
     ytDlpProcess = new QProcess(this);
 
     // ── 오른쪽 위로 위치 설정 ──────────────────
-    ui->dateLabel->move(1150, 30);
-    ui->timeLabel->move(1170, 65);
-    ui->lcdNumberTemp->move(1450, 25);
-    ui->label->move(1590, 25);
-    ui->lcdNumberHumi->move(1450, 85);
-    ui->label_2->move(1590, 85);
-    ui->labelAQI->move(1450, 150);
+    ui->dateLabel->move(1450, 20);
+    ui->timeLabel->move(1380, 50);
+    ui->lcdNumberTemp->move(1280, 180);
+    ui->label->move(1430, 180);
+    ui->lcdNumberHumi->move(1280, 260);
+    ui->label_2->move(1430, 260);
+    ui->labelAQI->move(1280, 360);
 
     // 크기 설정
-    ui->dateLabel->resize(250, 40);
-    ui->timeLabel->resize(250, 90);
-    ui->lcdNumberTemp->resize(120,50);
-    ui->lcdNumberHumi->resize(120,50);
-    ui->label->resize(100,50);
-    ui->label_2->resize(120,50);
-    ui->labelAQI->resize(250,40);
+    ui->timeLabel->resize(400, 120);
+    ui->lcdNumberTemp->resize(130, 50);
+    ui->lcdNumberHumi->resize(130, 50);
+    ui->label->resize(120, 50);
+    ui->label_2->resize(160, 50);
 
     newsWidget = new NewsPanel(ui->centralWidget);
     newsWidget->setGeometry(1920, 520, 760, 620);
     newsWidget->hide();
 
     musicBar=new MusicBar(ui->centralWidget);
-    musicBar->setGeometry(1030, 240, 930, 260);
+    musicBar->setGeometry(40, 40, 900, 260);
     musicBar->show();
     musicBar->stackUnder(blackOverlay);
 }
@@ -493,7 +492,8 @@ void MainWindow::gestureDetected(const QString &gesture)
 
                     ytDlpProcess->readAllStandardError();
 
-                    // 파이프라인을 거쳐 나온 최종 결과값
+
+
                     QString audioUrl = QString::fromUtf8(ytDlpProcess->readAllStandardOutput()).trimmed();
 
                     if (audioUrl.contains('\n'))
@@ -506,6 +506,56 @@ void MainWindow::gestureDetected(const QString &gesture)
                         qWarning() << "⚠️ 유효한 유튜브 주소를 획득하지 못했습니다. 수신 데이터:" << audioUrl;
                         return;
                     }
+                    qDebug() << "URL: " << audioUrl;
+
+                    QProcess infoProcess;
+
+                    QString program = "/home/jt-user/py310/bin/yt-dlp";
+                    QStringList arguments;
+                    arguments << "--skip-download"
+                              << "--get-duration"
+                              << "--print" << "title"
+                              << audioUrl;
+                    infoProcess.start(program, arguments);
+
+                    if (!infoProcess.waitForFinished(30000))
+                    {
+                        qDebug() << "에러: yt-dlp가 제시간에 끝나지 않았습니다.";
+                        return;
+                    }
+
+                    QString output = QString::fromUtf8(infoProcess.readAllStandardOutput()).trimmed();
+                    QString errorOutput = QString::fromUtf8(infoProcess.readAllStandardError()).trimmed();
+
+                    qDebug() << "OUTPUT: " << output;
+                    if (output.isEmpty())
+                    {
+                        qDebug() << "Error: 출력된 데이터가 없습니다.";
+                    }
+
+                    QStringList outputList = output.split(QRegularExpression("[\r\n]+"), QString::SkipEmptyParts);
+
+                    // 🔥 [수정 2] index out of range로 인한 크래시를 원천 차단하는 방어 코드 추가
+                    QString videoTitle = "알 수 없는 제목";
+                    QString videoDuration = "00:00";
+
+                    if (outputList.size() >= 2) {
+                        videoTitle = outputList.at(0);
+                        videoDuration = outputList.at(1);
+                    } else if (outputList.size() == 1) {
+                        videoTitle = outputList.at(0);
+                    } else {
+                        qWarning() << "⚠️ 제목과 길이 데이터를 파싱할 수 없습니다. 형식을 확인하세요.";
+                    }
+
+                    qDebug() << "=========================";
+                    qDebug() << "제목: " << videoTitle;
+                    qDebug() << "길이: " << videoDuration;
+                    qDebug() << "=========================";
+
+
+                    musicBar->setTrackTitle(videoTitle);
+                    musicBar->setTotalSeconds(100);
 
                     qDebug() << searchCount << "개 중 조회수가 가장 높은 영상 URL 추출 성공:" << audioUrl;
 
@@ -540,7 +590,7 @@ void MainWindow::gestureDetected(const QString &gesture)
                     qDebug() << "🚀 [mpv 구동 명령어]: /usr/bin/mpv" << mpvArgs.join(" ");
 
                     // 에러 감시 시그널 초기화 및 연결
-                    disconnect(mpvProcess, &QProcess::errorOccurred, nullptr, nullptr);
+                    disconnect(mpvProcess, &QProcess::errorOccurred, nulslptr, nullptr);
                     connect(mpvProcess, &QProcess::errorOccurred, this, [](QProcess::ProcessError err){
                         qWarning() << "❌ mpv 실행 자체 실패:" << err;
                     });
@@ -635,15 +685,16 @@ void MainWindow::showWeatherPanel()
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
-    weatherAnim->setStartValue(QPoint(980,1200));
-    weatherAnim->setEndValue(QPoint(980, 500));
+    weatherAnim->setStartValue(QPoint(900,1200));
+    weatherAnim->setEndValue(QPoint(900, 460));
 
     newsAnim->start(QAbstractAnimation::DeleteWhenStopped);
     weatherAnim->start(QAbstractAnimation::DeleteWhenStopped);
 
     connect(newsAnim, &QPropertyAnimation::finished, newsWidget, &QWidget::hide);
     connect(weatherAnim,&QPropertyAnimation::finished,this,[this](){
-        animationRunning = false;
+
+
     });
 }
 
@@ -665,8 +716,8 @@ void MainWindow::showNewsPanel()
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
-    weatherAnim->setStartValue(QPoint(980,500));
-    weatherAnim->setEndValue(QPoint(980, 1200));
+    weatherAnim->setStartValue(QPoint(900,460));
+    weatherAnim->setEndValue(QPoint(900, 1200));
 
     QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
     newsAnim->setDuration(700);
@@ -680,23 +731,4 @@ void MainWindow::showNewsPanel()
     connect(newsAnim,&QPropertyAnimation::finished,this,[this](){
         animationRunning = false;
     });
-}
-
-//테스트용
-void MainWindow::keyPressEvent(QKeyEvent *event)
-{
-    switch(event->key())
-    {
-    case Qt::Key_1:
-        showNewsPanel();
-        break;
-
-    case Qt::Key_2:
-        showWeatherPanel();
-        break;
-
-    default:
-        QMainWindow::keyPressEvent(event);
-        break;
-    }
 }
