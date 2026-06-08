@@ -214,8 +214,8 @@ void WeatherPanel::requestWeather()
 // ─────────────────────────────────────────────
 void WeatherPanel::requestMidLand()
 {
-    QString tmFc = QDate::currentDate().toString("yyyyMMdd");
-    tmFc += (QTime::currentTime().hour() >= 18) ? "1800" : "0600";
+    QString tmFc = QDate::currentDate().toString("yyyyMMdd") + "0600";
+    //tmFc += (QTime::currentTime().hour() >= 18) ? "1800" : "0600";
 
     QString url =
         QString(
@@ -236,8 +236,8 @@ void WeatherPanel::requestMidLand()
 // ─────────────────────────────────────────────
 void WeatherPanel::requestMidTemp()
 {
-    QString tmFc = QDate::currentDate().toString("yyyyMMdd");
-    tmFc += (QTime::currentTime().hour() >= 18) ? "1800" : "0600";
+    QString tmFc = QDate::currentDate().toString("yyyyMMdd") + "0600";
+    //tmFc += (QTime::currentTime().hour() >= 18) ? "1800" : "0600";
 
     QString url =
         QString(
@@ -541,9 +541,15 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
         const DayData &dd = dayMap[offset];
 
         QString icon    = dd.skyIcon.isEmpty() ? "☁" : dd.skyIcon;
-        QString maxStr  = (dd.maxTemp != -999) ? QString::number(dd.maxTemp) + "°" : "-";
+        QString maxStr;
         QString minStr;
 
+        if(offset == 0 && todayMaxTemp != -999){
+            maxStr=QString::number(todayMaxTemp)+"°";
+        }
+        else{
+            maxStr=(dd.maxTemp != -999) ? QString::number(dd.maxTemp) + "°" : "-";
+        }
         if(offset == 0 && todayMinTemp != -999)
         {
             minStr = QString::number(todayMinTemp) + "°";
