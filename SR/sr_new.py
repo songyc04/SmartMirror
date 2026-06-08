@@ -1,12 +1,11 @@
 # voice_controller.py
 import speech_recognition as sr
+import pyaudio
 
-LANGUAGE     = "ko-KR"
-DEVICE_INDEX = 10       # FF Camera: USB Audio
-WAKE_WORD    = "헤이 미러"
-COMMAND_TIMEOUT = 7     # Wake word 감지 후 명령 대기 시간 (초)
+LANGUAGE        = "ko-KR"
+WAKE_WORD       = "헤이 미러"
+COMMAND_TIMEOUT = 7  # Wake word 감지 후 명령 대기 시간 (초)
 
-# 명령어 → 아두이노 전송 문자열 매핑
 COMMANDS = {
     "차 시동": "CAR_START",
     "차 꺼줘": "CAR_STOP",
@@ -14,11 +13,43 @@ COMMANDS = {
     "불 꺼줘": "LIGHT_OFF",
 }
 
-def listen_once(recognizer, mic, timeout=5, phrase_limit=5) -> str | None:
-    """마이크에서 음성 한 번 듣고 텍스트 반환, 실패 시 None"""
+
+def get_microphone_index() -> int | None:
+    pa = pyaudio.PyAudio()
+    usb_index      = None
+    loopback_index = None
+    fallback_index = None
+
+    print("[마이크 목록]")
+    for i in range(pa.get_device_count()):
+        info = pa.get_device_info_by_index(i)
+        if info["maxInputChannels"] > 0:
+            name = info["name"]
+            print(f"  {i}번: {name}")
+            if ("USB" in name or "Camera" in name) and usb_index is None:
+                usb_index = i
+            if "Loopback" in name and loopback_index is None:
+                loopback_index = i
+            if fallback_index is None:
+                fallback_index = i
+
+    pa.terminate()
+
+    if usb_index is not None:
+        print(f"[마이크 자동 감지] USB 카메라 마이크 {usb_index}번 사용")
+        return usb_index
+    if loopback_index is not None:
+        print(f"[마이크 자동 감지] Loopback {loopback_index}번 사용")
+        return loopback_index
+
+    print(f"[마이크 자동 감지] {fallback_index}번 사용 (기본값)")
+    return fallback_index
+
+
+def listen_once(recognizer, source, timeout=5, phrase_limit=5) -> str | None:
     try:
         audio = recognizer.listen(
-            mic,
+            source,
             timeout=timeout,
             phrase_time_limit=phrase_limit
         )
@@ -32,16 +63,22 @@ def listen_once(recognizer, mic, timeout=5, phrase_limit=5) -> str | None:
         print(f"[서버 오류] {e}")
         return None
 
+
 def match_command(text: str) -> str | None:
-    """인식된 텍스트에서 명령어 매칭"""
     for keyword, action in COMMANDS.items():
         if keyword in text:
             return action
     return None
 
+
 def main():
+    mic_index = get_microphone_index()
+    if mic_index is None:
+        print("[오류] 사용 가능한 마이크가 없습니다.")
+        return
+
     r   = sr.Recognizer()
-    mic = sr.Microphone(device_index=DEVICE_INDEX)
+    mic = sr.Microphone(device_index=mic_index)
 
     print("[초기화] 주변 소음 감지 중... (잠시 조용히 해주세요)")
     with mic as source:
@@ -95,6 +132,7 @@ def main():
         except KeyboardInterrupt:
             print("\n[종료] 음성인식 종료.")
             break
+
 
 if __name__ == "__main__":
     main()
