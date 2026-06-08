@@ -330,7 +330,7 @@ void MainWindow::processData(const QString &data)
     if (data == "ON")
     {
         if (emotionProcess && emotionProcess->state() == QProcess::NotRunning) {
-            emotionProcess->setWorkingDirectory("/home/jt-user/SmartMirror/opencv");
+            emotionProcess->setWorkingDirectory("/home/jt-user/SmartMirror/PYTHON");
 
             QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
             // 기존: contains 체크 후 삽입 → 이미 잘못된 DISPLAY일 수도 있음
@@ -346,8 +346,8 @@ void MainWindow::processData(const QString &data)
                 // Qt는 계속 살아있음
             });
 
-            emotionProcess->start("/home/jt-user/py310/bin/python3",
-            QStringList() << "opencv_latest.py");
+            emotionProcess->start("/home/jt-user/py310/bin/python",
+            QStringList() << "gesture_sr.py");
 
             qDebug() << "아두이노 ON: 파이썬 감정 분석 스크립트를 시작합니다.";
         }
