@@ -27,8 +27,6 @@ public:
 protected:
     void resizeEvent(QResizeEvent *event) override;
 
-    //테스트용
-    void keyPressEvent(QKeyEvent *event) override;
 
 private slots:
     void updateTime();
@@ -72,7 +70,7 @@ private:
     bool isWeatherVisible = true;
     bool animationRunning = false;
     QString keyword = NULL;
-    int searchCount = 10;
+    int searchCount = 5;
 };
 
 #endif // MAINWINDOW_H

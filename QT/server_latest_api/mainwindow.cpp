@@ -106,9 +106,9 @@ MainWindow::MainWindow(QWidget *parent)
     blackOverlay = new QFrame(ui->centralWidget);
     blackOverlay->setGeometry(ui->centralWidget->rect());
     blackOverlay->setStyleSheet("background-color:black;");
-    //blackOverlay->raise();
-    //blackOverlay->show(); // 시작할 때는 화면 켜진 상태
-    blackOverlay->hide();
+    blackOverlay->raise();
+    blackOverlay->show(); // 시작할 때는 화면 켜진 상태
+    //blackOverlay->hide();
 
     // weather panel(초기위치)
     WeatherWidget = new WeatherPanel(ui->centralWidget);
@@ -127,6 +127,26 @@ MainWindow::MainWindow(QWidget *parent)
     // ── 미디어 재생용 QProcess 단독 할당 ──
     mpvProcess = new QProcess(this);
     ytDlpProcess = new QProcess(this);
+
+    // ⭕ [여기에 삽입] mpv의 입을 24시간 감시하는 직통 파이프라인 개설
+    connect(mpvProcess, &QProcess::readyReadStandardOutput, this, [this]() {
+        if (!mpvProcess) return;
+
+        // mpv가 출력한 로그를 한 줄씩 읽어옵니다.
+        QString mpvLog = QString::fromUtf8(mpvProcess->readAllStandardOutput()).trimmed();
+
+        // 디버깅용: mpv가 뒤에서 무슨 말을 하는지 터미널에 뿌려보고 싶다면 아래 주석 해제
+        // qDebug() << "[mpv 내부 로그]:" << mpvLog;
+
+        // mpv가 버퍼링을 완벽히 끝내고 사운드 카드를 점유하여 노래를 틀기 시작할 때 무조건 뱉는 단어 필터링
+        if (mpvLog.contains("Starting playback...") || mpvLog.contains("AO: [alsa]")) {
+            qDebug() << "🎵 [오디오 출력 확인] mpv 자체 로그 검증 완료 - 실제 노래 재생이 시작되었습니다!";
+
+            if (musicBar) {
+                musicBar->setPlaying(true);
+            }
+        }
+    });
 
     // ── 오른쪽 위로 위치 설정 ──────────────────
     ui->dateLabel->move(1450, 20);
@@ -446,6 +466,7 @@ void MainWindow::gestureDetected(const QString &gesture)
             QProcess::execute("sh", QStringList() << "-c"
                                                   << "echo '{\"command\":[\"set_property\",\"pause\",false]}' | socat - /tmp/mpv-socket");
             isPaused = false;
+            musicBar->setPlaying(true);
         }
         else // 최초 재생 혹은 프로세스가 완전히 꺼진 상태일 때 새 인스턴스 생성
         {
@@ -548,14 +569,29 @@ void MainWindow::gestureDetected(const QString &gesture)
                         qWarning() << "⚠️ 제목과 길이 데이터를 파싱할 수 없습니다. 형식을 확인하세요.";
                     }
 
+                    // ── [여기에 추가] 문자열 길이를 정수형 초(int)로 변환 ──
+                    QStringList timeParts = videoDuration.trimmed().split(':');
+                    int durationInSeconds = 0;
+
+                    if (timeParts.size() == 2) {
+                        durationInSeconds = (timeParts.at(0).toInt() * 60) + timeParts.at(1).toInt();
+                    } else if (timeParts.size() == 3) {
+                        durationInSeconds = (timeParts.at(0).toInt() * 3600) + (timeParts.at(1).toInt() * 60) + timeParts.at(2).toInt();
+                    } else if (!timeParts.isEmpty()) {
+                        durationInSeconds = timeParts.at(0).toInt();
+                    }
+
                     qDebug() << "=========================";
                     qDebug() << "제목: " << videoTitle;
                     qDebug() << "길이: " << videoDuration;
                     qDebug() << "=========================";
+                    int totalSeconds = 0;
+                    videoDuration = videoDuration.trimmed();
+
 
 
                     musicBar->setTrackTitle(videoTitle);
-                    musicBar->setTotalSeconds(100);
+                    musicBar->setTotalSeconds(durationInSeconds);
 
                     qDebug() << searchCount << "개 중 조회수가 가장 높은 영상 URL 추출 성공:" << audioUrl;
 
@@ -580,6 +616,10 @@ void MainWindow::gestureDetected(const QString &gesture)
                             << "--gapless-audio=yes"
                             << "--ao=alsa"
 
+                            // ⭕ [필수 추가] mpv가 재생을 시작할 때 "Starting playback..." 이라는 표준 로그를 강제로 찍게 만듭니다.
+                            << "--terminal=yes"
+                            << "--msg-level=all=status" // 상태 변화 로그 강제 활성화
+
                             // 🔥 [안전하고 확실한 최신 대역폭/버퍼 가드 옵션]
                             << "--demuxer-max-bytes=50"         // 메모리 버퍼 상한선을 50MB로 제한 (오디오 기준 곡 전체 분량)
                             << "--demuxer-readahead-secs=30"       // 최대 30초 분량의 오디오 데이터를 무조건 먼저 읽어옴
@@ -590,12 +630,15 @@ void MainWindow::gestureDetected(const QString &gesture)
                     qDebug() << "🚀 [mpv 구동 명령어]: /usr/bin/mpv" << mpvArgs.join(" ");
 
                     // 에러 감시 시그널 초기화 및 연결
-                    disconnect(mpvProcess, &QProcess::errorOccurred, nulslptr, nullptr);
+                    disconnect(mpvProcess, &QProcess::errorOccurred, nullptr, nullptr);
                     connect(mpvProcess, &QProcess::errorOccurred, this, [](QProcess::ProcessError err){
                         qWarning() << "❌ mpv 실행 자체 실패:" << err;
                     });
 
                     mpvProcess->start("/usr/bin/mpv", mpvArgs);
+
+                    // ... mpvProcess->start("/usr/bin/mpv", mpvArgs); 바로 아랫줄 코드를 아래 내용으로 교체
+
                 },
                 Qt::UniqueConnection
             );
@@ -614,6 +657,7 @@ void MainWindow::gestureDetected(const QString &gesture)
             QProcess::execute("sh", QStringList() << "-c"
                                                   << "echo '{\"command\":[\"set_property\",\"pause\",true]}' | socat - /tmp/mpv-socket");
             isPaused = true;
+            musicBar->setPlaying(false);
         }
     }
     // END 수신 시: mpv 프로세스를 완전히 종료하고 플래그 해제
@@ -625,6 +669,10 @@ void MainWindow::gestureDetected(const QString &gesture)
             mpvProcess->kill();
             mpvProcess->waitForFinished(1000);
             isPaused = false;
+            musicBar->setPlaying(false);
+            musicBar->setTrackTitle("");
+            musicBar->setCurrentSeconds(0);
+            musicBar->onTimerTick();
         }
     }
     // 왼쪽은 뉴스, 오른쪽은 날씨

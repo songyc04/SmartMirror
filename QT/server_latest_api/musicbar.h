@@ -26,6 +26,8 @@ public:
     void setPlaying(bool playing);
     bool isPlaying() const { return mIsPlaying; }
 
+    void onTimerTick();
+
 signals:
     void playClicked();
     void prevClicked();
@@ -37,7 +39,7 @@ private slots:
     void onPrevClicked();
     void onNextClicked();
     void onSliderMoved(int value);
-    void onTimerTick();
+
 
 protected:
     void paintEvent(QPaintEvent *event) override;

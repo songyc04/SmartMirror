@@ -106,6 +106,7 @@ void MusicBar::onTimerTick()
         setPlaying(false);
         mCurrentSec = 0;
         updateTimeLabels();          // lblCurrentTime → "0:00", slider → 0
+        ui->progressSlider->setValue(0);
     }
 }
 
