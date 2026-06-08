@@ -472,7 +472,8 @@ void MainWindow::gestureDetected(const QString &gesture)
 
             // 파이썬 3.10 가상환경을 사용하여 조회수 정렬 수행
             QString cmd = QString("/home/jt-user/py310/bin/yt-dlp \"ytsearch")
-                          + QString::number(searchCount) + ":" + keyword + " 플레이리스트\" "
+                          + QString::number(searchCount) + ":" + keyword + "\" "
+                          + "--match-filter \"duration <= 600\" "
                           + "--flat-playlist --print \"%(view_count)012d %(url)s\" "
                           + "| sort -r | head -n " + QString::number(targetRank) + " | awk '{print $2}'";
             // 새로운 연결을 맺기 전 기존 finished 연결을 무조건 초기화
@@ -526,6 +527,12 @@ void MainWindow::gestureDetected(const QString &gesture)
                             << "--input-ipc-server=/tmp/mpv-socket"
                             << "--gapless-audio=yes"
                             << "--ao=alsa"
+
+                            // 🔥 [안전하고 확실한 최신 대역폭/버퍼 가드 옵션]
+                            << "--demuxer-max-bytes=50"         // 메모리 버퍼 상한선을 50MB로 제한 (오디오 기준 곡 전체 분량)
+                            << "--demuxer-readahead-secs=30"       // 최대 30초 분량의 오디오 데이터를 무조건 먼저 읽어옴
+                            << "--network-timeout=10"              // 네트워크 응답이 10초간 없으면 무한 대기하지 않고 재접속 프로토콜 가동
+
                             << audioUrl; // URL은 맨 뒤로 배치
 
                     qDebug() << "🚀 [mpv 구동 명령어]: /usr/bin/mpv" << mpvArgs.join(" ");
@@ -579,6 +586,28 @@ void MainWindow::gestureDetected(const QString &gesture)
         qDebug() << "➡ RIGHT : 날씨 패널";
         showWeatherPanel();
     }
+    else if (gesture == "VOLUME_UP")
+        {
+            if (mpvProcess && mpvProcess->state() == QProcess::Running)
+            {
+                qDebug() << "▲ [볼륨 제어] VOLUME_UP 제스처 감지: mpv 오디오 볼륨을 5% 올립니다.";
+                // cycle volume up: mpv 자체 명령어인 cycle을 이용해 볼륨을 5 단위로 올립니다.
+                QProcess::execute("sh", QStringList() << "-c"
+                                                     << "echo '{\"command\":[\"cycle\",\"volume\",\"up\"]}' | socat - /tmp/mpv-socket");
+            }
+        }
+    // ── [추가] 손바닥 아래로 (VOLUME_DOWN) 수신 시 실제 mpv 볼륨 5% 감소 ──
+    else if (gesture == "VOLUME_DOWN")
+    {
+        if (mpvProcess && mpvProcess->state() == QProcess::Running)
+        {
+            qDebug() << "▼ [볼륨 제어] VOLUME_DOWN 제스처 감지: mpv 오디오 볼륨을 5% 낮춥니다.";
+            // cycle volume down: 볼륨을 5 단위로 내립니다.
+            QProcess::execute("sh", QStringList() << "-c"
+                                                 << "echo '{\"command\":[\"cycle\",\"volume\",\"down\"]}' | socat - /tmp/mpv-socket");
+        }
+    }
+
 }
 
 // ── Weather Panel 보이기 ──────────────────────────
