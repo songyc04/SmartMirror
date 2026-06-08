@@ -7,7 +7,6 @@
 #include <QTableWidgetItem>
 #include <QGraphicsDropShadowEffect>
 #include <QDate>
-#include <QDebug>
 #include <QTime>
 #include <QSet>
 
@@ -207,7 +206,6 @@ void WeatherPanel::requestWeather()
             .arg(currentRegion.nx)
             .arg(currentRegion.ny);
 
-    qDebug() << "초단기실황 URL:" << url;
     manager->get(QNetworkRequest(QUrl(url)));
 }
 
@@ -230,7 +228,6 @@ void WeatherPanel::requestMidLand()
             .arg(currentRegion.midLandRegId)
             .arg(tmFc);
 
-    qDebug() << "MidLand URL:" << url;
     midLandManager->get(QNetworkRequest(QUrl(url)));
 }
 
@@ -253,7 +250,6 @@ void WeatherPanel::requestMidTemp()
             .arg(currentRegion.midTempRegId)
             .arg(tmFc);
 
-    qDebug() << "MidTemp URL:" << url;
     midTempManager->get(QNetworkRequest(QUrl(url)));
 }
 
@@ -267,7 +263,6 @@ void WeatherPanel::requestShortTerm()
         "https://apihub.kma.go.kr/api/typ01/url/fct_afs_dl.php"
         "?disp=1&help=0&authKey=umH6GTnpT9-h-hk56Z_fKA";
 
-    qDebug() << "ShortTerm URL:" << url;
     shortTermManager->get(QNetworkRequest(QUrl(url)));
 }
 
@@ -293,8 +288,6 @@ void WeatherPanel::requestDailyForecast()
             .arg(currentRegion.nx)
             .arg(currentRegion.ny);
 
-    qDebug() << "DailyForecast URL:" << url;
-
     dailyManager->get(QNetworkRequest(QUrl(url)));
 }
 
@@ -304,7 +297,6 @@ void WeatherPanel::requestDailyForecast()
 void WeatherPanel::onWeatherReply(QNetworkReply *reply)
 {
     QByteArray data = reply->readAll();
-    qDebug() << "초단기실황 응답:" << data;
 
     QJsonDocument doc = QJsonDocument::fromJson(data);
     if (doc.isNull())
@@ -372,7 +364,6 @@ void WeatherPanel::onWeatherReply(QNetworkReply *reply)
 void WeatherPanel::onMidLandReply(QNetworkReply *reply)
 {
     QByteArray data = reply->readAll();
-    qDebug() << "MidLand 응답:" << data;
 
     QJsonDocument doc = QJsonDocument::fromJson(data);
     if (doc.isNull())
@@ -407,12 +398,10 @@ void WeatherPanel::onMidLandReply(QNetworkReply *reply)
 void WeatherPanel::onMidTempReply(QNetworkReply *reply)
 {
     QByteArray data = reply->readAll();
-    qDebug() << "MidTemp 응답:" << data;
 
     QJsonDocument doc = QJsonDocument::fromJson(data);
     if (doc.isNull())
     {
-        qDebug() << "MidTemp JSON 파싱 실패";
         reply->deleteLater();
         return;
     }
@@ -426,7 +415,6 @@ void WeatherPanel::onMidTempReply(QNetworkReply *reply)
 
     if (arr.isEmpty())
     {
-        qDebug() << "MidTemp 아이템 없음";
         reply->deleteLater();
         return;
     }
@@ -460,7 +448,6 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
     QTextCodec *codec = QTextCodec::codecForName("EUC-KR");
     QString text = codec ? codec->toUnicode(rawData) : QString::fromUtf8(rawData);
 
-    qDebug() << "ShortTerm 응답 (첫 500자):" << text.left(500);
 
     // 서울 지역 코드
     const QString targetRegId =
@@ -526,24 +513,6 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
         {
             dd.skyIcon = skyCodeToIcon(skyCode);
         }
-/*
-        // 낮(12시) → 최고기온 + 아이콘
-        if (hour == 12)
-        {
-            if (ta != -99)
-                dd.maxTemp = ta;
-            if (dd.skyIcon.isEmpty())
-                dd.skyIcon = skyCodeToIcon(skyCode);
-        }
-        // 자정(00시) → 최저기온
-        else if (hour == 0)
-        {
-            if (ta != -99)
-                dd.minTemp = ta;
-            // 아이콘이 아직 없으면 밤 SKY로 대체
-            if (dd.skyIcon.isEmpty())
-                dd.skyIcon = skyCodeToIcon(skyCode);
-        }*/
     }
 
     // ── 테이블 col 1~3 채우기 (D+1=col2, D+2=col3, D+3=col4) ──
@@ -573,7 +542,6 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
 
         QString icon    = dd.skyIcon.isEmpty() ? "☁" : dd.skyIcon;
         QString maxStr  = (dd.maxTemp != -999) ? QString::number(dd.maxTemp) + "°" : "-";
-        //QString minStr  = (dd.minTemp != -999) ? QString::number(dd.minTemp) + "°" : "-";
         QString minStr;
 
         if(offset == 0 && todayMinTemp != -999)
@@ -598,18 +566,10 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
         setCell(0, col, icon);
         setCell(1, col, maxStr);
         setCell(2, col, minStr);
-
-        qDebug() << "ShortTerm col" << col << "D+" << offset
-                 << targetDate.toString("MM/dd") << dayName
-                 << "max:" << maxStr << "min:" << minStr << "icon:" << icon;
     }
     for(int c = 0; c < ui->tableForecast->columnCount(); c++)
     {
         auto h = ui->tableForecast->horizontalHeaderItem(c);
-
-        qDebug() << "col =" << c
-                 << "header ="
-                 << (h ? h->text() : "NULL");
     }
 }
 
@@ -668,10 +628,6 @@ void WeatherPanel::tryFillMidForecast()
         setCell(0, col, icon);
         setCell(1, col, QString::number(maxTemp) + "°");
         setCell(2, col, QString::number(minTemp) + "°");
-
-        qDebug() << "MidForecast col" << col << "D+" << offset
-                 << target.toString("MM/dd") << dayName
-                 << "max:" << maxTemp << "min:" << minTemp;
     }
 }
 
@@ -729,10 +685,6 @@ void WeatherPanel::onDailyForecastReply(QNetworkReply *reply)
 
     if (todayMinTemp == 999)
         todayMinTemp = -999;
-
-    qDebug()
-        << "오늘 최저:" << todayMinTemp
-        << "오늘 최고:" << todayMaxTemp;
 
     reply->deleteLater();
 

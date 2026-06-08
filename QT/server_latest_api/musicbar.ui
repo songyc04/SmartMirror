@@ -6,86 +6,202 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>500</width>
-    <height>220</height>
+    <width>900</width>
+    <height>260</height>
    </rect>
   </property>
-  <property name="windowTitle">
-   <string>Form</string>
+  <property name="minimumSize">
+   <size>
+    <width>700</width>
+    <height>240</height>
+   </size>
   </property>
-  <widget class="QWidget" name="verticalLayoutWidget">
+  <property name="windowTitle">
+   <string>MusicBar</string>
+  </property>
+  <widget class="QLabel" name="lblMusicIcon">
    <property name="geometry">
     <rect>
-     <x>120</x>
-     <y>10</y>
-     <width>241</width>
-     <height>194</height>
+     <x>28</x>
+     <y>16</y>
+     <width>36</width>
+     <height>36</height>
     </rect>
    </property>
-   <layout class="QVBoxLayout" name="verticalLayout">
-    <item>
-     <widget class="QWidget" name="waveContainer" native="true">
-      <property name="enabled">
-       <bool>true</bool>
-      </property>
-      <property name="minimumSize">
-       <size>
-        <width>0</width>
-        <height>120</height>
-       </size>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>16777215</width>
-        <height>120</height>
-       </size>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QToolButton" name="btnPrev">
-        <property name="minimumSize">
-         <size>
-          <width>64</width>
-          <height>64</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>&lt;&lt;</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QToolButton" name="btnPlay">
-        <property name="minimumSize">
-         <size>
-          <width>64</width>
-          <height>64</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>▶</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QToolButton" name="btnNext">
-        <property name="minimumSize">
-         <size>
-          <width>64</width>
-          <height>64</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>&gt;&gt;</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-   </layout>
+   <property name="text">
+    <string>♪</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lblTrackTitle">
+   <property name="geometry">
+    <rect>
+     <x>72</x>
+     <y>16</y>
+     <width>756</width>
+     <height>36</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>TRACK TITLE</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lblBarsIcon">
+   <property name="geometry">
+    <rect>
+     <x>836</x>
+     <y>16</y>
+     <width>36</width>
+     <height>36</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>▐▌</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+  <widget class="QWidget" name="waveContainer" native="true">
+   <property name="geometry">
+    <rect>
+     <x>24</x>
+     <y>60</y>
+     <width>852</width>
+     <height>110</height>
+    </rect>
+   </property>
+   <property name="minimumSize">
+    <size>
+     <width>0</width>
+     <height>110</height>
+    </size>
+   </property>
+   <property name="maximumSize">
+    <size>
+     <width>16777215</width>
+     <height>110</height>
+    </size>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lblCurrentTime">
+   <property name="geometry">
+    <rect>
+     <x>24</x>
+     <y>178</y>
+     <width>68</width>
+     <height>28</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>0:00</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+   </property>
+  </widget>
+  <widget class="QSlider" name="progressSlider">
+   <property name="geometry">
+    <rect>
+     <x>96</x>
+     <y>182</y>
+     <width>708</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="minimum">
+    <number>0</number>
+   </property>
+   <property name="maximum">
+    <number>672</number>
+   </property>
+   <property name="value">
+    <number>0</number>
+   </property>
+   <property name="orientation">
+    <enum>Qt::Horizontal</enum>
+   </property>
+   <property name="tickPosition">
+    <enum>QSlider::NoTicks</enum>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lblTotalTime">
+   <property name="geometry">
+    <rect>
+     <x>808</x>
+     <y>178</y>
+     <width>68</width>
+     <height>28</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>11:12</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+   </property>
+  </widget>
+  <widget class="QToolButton" name="btnPrev">
+   <property name="geometry">
+    <rect>
+     <x>300</x>
+     <y>212</y>
+     <width>80</width>
+     <height>36</height>
+    </rect>
+   </property>
+   <property name="minimumSize">
+    <size>
+     <width>64</width>
+     <height>32</height>
+    </size>
+   </property>
+   <property name="text">
+    <string>&lt;&lt;</string>
+   </property>
+  </widget>
+  <widget class="QToolButton" name="btnPlay">
+   <property name="geometry">
+    <rect>
+     <x>410</x>
+     <y>212</y>
+     <width>80</width>
+     <height>36</height>
+    </rect>
+   </property>
+   <property name="minimumSize">
+    <size>
+     <width>64</width>
+     <height>32</height>
+    </size>
+   </property>
+   <property name="text">
+    <string>▶</string>
+   </property>
+  </widget>
+  <widget class="QToolButton" name="btnNext">
+   <property name="geometry">
+    <rect>
+     <x>520</x>
+     <y>212</y>
+     <width>80</width>
+     <height>36</height>
+    </rect>
+   </property>
+   <property name="minimumSize">
+    <size>
+     <width>64</width>
+     <height>32</height>
+    </size>
+   </property>
+   <property name="text">
+    <string>&gt;&gt;</string>
+   </property>
   </widget>
  </widget>
  <resources/>

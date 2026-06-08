@@ -18,10 +18,15 @@ protected:
     void paintEvent(QPaintEvent *event) override;
 
 private:
-    QVector<int> mBars;
-    QTimer mTimer;
+    QVector<qreal> mBars;      // 각 바의 높이 (0.0 ~ 1.0)
+    QVector<qreal> mTargets;   // 애니메이션 목표 높이
+    QTimer         mTimer;
+    bool           mPlaying;
 
-    bool mPlaying;
+    static const int BAR_COUNT = 52;
+
+    void  randomizeTargets();
+    void  animateBars();
 };
 
-#endif
+#endif // WAVEWIDGET_H

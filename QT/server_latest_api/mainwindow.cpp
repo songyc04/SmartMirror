@@ -148,8 +148,7 @@ MainWindow::MainWindow(QWidget *parent)
     newsWidget->hide();
 
     musicBar=new MusicBar(ui->centralWidget);
-    musicBar->resize(900, 220);
-    musicBar->setGeometry(510, 430, 900, 220);
+    musicBar->setGeometry(40, 40, 900, 260);
     musicBar->show();
     musicBar->stackUnder(blackOverlay);
 }
