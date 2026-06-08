@@ -13,7 +13,7 @@
 #include <QColor>
 #include <QProcessEnvironment>
 #include <random>
-//#include <QKeyEvent>    //테스트용
+#include <QKeyEvent>    //테스트용
 
 const quint16 ARDUINO_PORT = 9000;
 const quint16 GESTURE_PORT = 9001;
@@ -105,20 +105,20 @@ MainWindow::MainWindow(QWidget *parent)
     blackOverlay = new QFrame(ui->centralWidget);
     blackOverlay->setGeometry(ui->centralWidget->rect());
     blackOverlay->setStyleSheet("background-color:black;");
-    blackOverlay->raise();
-    blackOverlay->show(); // 시작할 때는 화면 켜진 상태
-    //blackOverlay->hide();
+    //blackOverlay->raise();
+    //blackOverlay->show(); // 시작할 때는 화면 켜진 상태
+    blackOverlay->hide();
 
     // weather panel(초기위치)
     WeatherWidget = new WeatherPanel(ui->centralWidget);
-    WeatherWidget->setGeometry(900, 1200, 1023, 500);
+    WeatherWidget->setGeometry(980, 1200, 900, 500);
     WeatherWidget->hide();
     QTimer::singleShot(
         1000,
         this,
         [=]()
         {
-            WeatherWidget->move(900, 460);
+            WeatherWidget->move(980, 500);
             WeatherWidget->show();
             blackOverlay->raise();
         });
@@ -128,27 +128,29 @@ MainWindow::MainWindow(QWidget *parent)
     ytDlpProcess = new QProcess(this);
 
     // ── 오른쪽 위로 위치 설정 ──────────────────
-    ui->dateLabel->move(1450, 20);
-    ui->timeLabel->move(1380, 50);
-    ui->lcdNumberTemp->move(1280, 180);
-    ui->label->move(1430, 180);
-    ui->lcdNumberHumi->move(1280, 260);
-    ui->label_2->move(1430, 260);
-    ui->labelAQI->move(1280, 360);
+    ui->dateLabel->move(1150, 30);
+    ui->timeLabel->move(1170, 65);
+    ui->lcdNumberTemp->move(1450, 25);
+    ui->label->move(1590, 25);
+    ui->lcdNumberHumi->move(1450, 85);
+    ui->label_2->move(1590, 85);
+    ui->labelAQI->move(1450, 150);
 
     // 크기 설정
-    ui->timeLabel->resize(400, 120);
-    ui->lcdNumberTemp->resize(130, 50);
-    ui->lcdNumberHumi->resize(130, 50);
-    ui->label->resize(120, 50);
-    ui->label_2->resize(160, 50);
+    ui->dateLabel->resize(250, 40);
+    ui->timeLabel->resize(250, 90);
+    ui->lcdNumberTemp->resize(120,50);
+    ui->lcdNumberHumi->resize(120,50);
+    ui->label->resize(100,50);
+    ui->label_2->resize(120,50);
+    ui->labelAQI->resize(250,40);
 
     newsWidget = new NewsPanel(ui->centralWidget);
     newsWidget->setGeometry(1920, 520, 760, 620);
     newsWidget->hide();
 
     musicBar=new MusicBar(ui->centralWidget);
-    musicBar->setGeometry(40, 40, 900, 260);
+    musicBar->setGeometry(1030, 240, 930, 260);
     musicBar->show();
     musicBar->stackUnder(blackOverlay);
 }
@@ -633,8 +635,8 @@ void MainWindow::showWeatherPanel()
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
-    weatherAnim->setStartValue(QPoint(900,1200));
-    weatherAnim->setEndValue(QPoint(900, 460));
+    weatherAnim->setStartValue(QPoint(980,1200));
+    weatherAnim->setEndValue(QPoint(980, 500));
 
     newsAnim->start(QAbstractAnimation::DeleteWhenStopped);
     weatherAnim->start(QAbstractAnimation::DeleteWhenStopped);
@@ -663,8 +665,8 @@ void MainWindow::showNewsPanel()
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
-    weatherAnim->setStartValue(QPoint(900,460));
-    weatherAnim->setEndValue(QPoint(900, 1200));
+    weatherAnim->setStartValue(QPoint(980,500));
+    weatherAnim->setEndValue(QPoint(980, 1200));
 
     QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
     newsAnim->setDuration(700);
@@ -679,7 +681,7 @@ void MainWindow::showNewsPanel()
         animationRunning = false;
     });
 }
-/*
+
 //테스트용
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
@@ -698,4 +700,3 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         break;
     }
 }
-*/
