@@ -14,25 +14,25 @@ MusicBar::MusicBar(QWidget *parent)
 {
     ui->setupUi(this);
 
-    // -- Insert WaveWidget ----------------------------
+    // -- WaveWidget 삽입 ----------------------------
     mWave = new WaveWidget(this);
     QVBoxLayout *waveLayout = new QVBoxLayout(ui->waveContainer);
     waveLayout->setContentsMargins(0, 0, 0, 0);
     waveLayout->setSpacing(0);
     waveLayout->addWidget(mWave);
 
-    // -- Default track info display -------------------
+    // -- 기본 트랙 정보 표시 -------------------
     setTotalSeconds(mTotalSec);
     updateTimeLabels();
 
     ui->progressSlider->setValue(0);
 
-    // -- Progress timer -------------------------------
+    // -- 진행 타이머 -------------------------------
     mProgressTimer = new QTimer(this);
     mProgressTimer->setInterval(1000);
     connect(mProgressTimer, &QTimer::timeout, this, &MusicBar::onTimerTick);
 
-    // -- Signal connections ---------------------------
+    // -- 시그널 연결 ---------------------------
     connect(ui->btnPlay,        &QToolButton::clicked,  this, &MusicBar::onPlayClicked);
     connect(ui->btnPrev,        &QToolButton::clicked,  this, &MusicBar::onPrevClicked);
     connect(ui->btnNext,        &QToolButton::clicked,  this, &MusicBar::onNextClicked);
@@ -46,7 +46,7 @@ MusicBar::~MusicBar()
     delete ui;
 }
 
-// -- External API ------------------------------------
+// -- 외부 API ------------------------------------
 void MusicBar::setTrackTitle(const QString &title)
 {
     ui->lblTrackTitle->setText(title.toUpper());
@@ -79,7 +79,7 @@ void MusicBar::setPlaying(bool playing)
     }
 }
 
-// -- Slots -------------------------------------------
+// -- 슬롯 -------------------------------------------
 void MusicBar::onPlayClicked()
 {
     setPlaying(!mIsPlaying);
@@ -102,7 +102,7 @@ void MusicBar::onTimerTick()
         mCurrentSec++;
         updateTimeLabels();
     } else {
-        // -- Track end: stop + reset slider/time to start --
+        // -- 트랙 종료: 정지 + 슬라이더/시간 초기화 --
         setPlaying(false);
         mCurrentSec = 0;
         updateTimeLabels();          // lblCurrentTime -> "0:00", slider -> 0
@@ -110,7 +110,7 @@ void MusicBar::onTimerTick()
     }
 }
 
-// -- Helpers ------------------------------------------
+// -- 헬퍼 ------------------------------------------
 void MusicBar::updateTimeLabels()
 {
     ui->lblCurrentTime->setText(formatTime(mCurrentSec));
@@ -125,7 +125,7 @@ QString MusicBar::formatTime(int secs) const
     return QString("%1:%2").arg(m).arg(s, 2, 10, QChar('0'));
 }
 
-// -- paintEvent: rounded card background ------------
+// -- paintEvent: 둥근 카드 배경 ------------
 void MusicBar::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
@@ -139,7 +139,7 @@ void MusicBar::paintEvent(QPaintEvent *)
     painter.drawPath(path);
 }
 
-// -- Style ---------------------------------------------
+// -- 스타일 ---------------------------------------------
 void MusicBar::applyStyles()
 {
     setAttribute(Qt::WA_StyledBackground, false);

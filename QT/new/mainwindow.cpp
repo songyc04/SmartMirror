@@ -22,7 +22,7 @@ MainWindow::MainWindow(QWidget *parent)
     isPaused = false;
     waitingData = true;
 
-    // -- TCP 9000 Worker & Thread ------------------
+    // -- TCP 9000 워커 및 스레드 ------------------
     m_tcpThread = new QThread(this);
     m_tcpWorker = new TcpSocketWorker();
     m_tcpWorker->moveToThread(m_tcpThread);
@@ -36,7 +36,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_tcpThread->start();
 
-    // -- TCP 9001 Gesture Worker & Thread -----------
+    // -- TCP 9001 제스처 워커 및 스레드 -----------
     m_gestureThread = new QThread(this);
     m_gestureWorker = new GestureSocketWorker();
     m_gestureWorker->moveToThread(m_gestureThread);
@@ -50,7 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_gestureThread->start();
 
-    // -- Emotion Process Worker & Thread ------------
+    // -- 감정 처리 워커 및 스레드 ------------
     m_emotionThread = new QThread(this);
     m_emotionWorker = new EmotionProcessWorker();
     m_emotionWorker->moveToThread(m_emotionThread);
@@ -62,7 +62,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_emotionThread->start();
 
-    // -- Music Player Worker & Thread ---------------
+    // -- 음악 재생 워커 및 스레드 ---------------
     m_musicThread = new QThread(this);
     m_musicWorker = new MusicPlayerWorker();
     m_musicWorker->moveToThread(m_musicThread);
@@ -86,13 +86,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_musicThread->start();
 
-    // -- Clock timer --------------------------------
+    // -- 시계 타이머 --------------------------------
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTime);
     timer->start(1000);
     updateTime();
 
-    // -- Global style -------------------------------
+    // -- 전역 스타일 -------------------------------
     this->setStyleSheet("background-color:black;");
 
     ui->dateLabel->setStyleSheet(
@@ -119,7 +119,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lcdNumberTemp->setStyleSheet("background:#151515; border-radius:8px;");
     ui->lcdNumberHumi->setStyleSheet("background:#151515; border-radius:8px;");
 
-    // -- Weather panel -----------------------------
+    // -- 날씨 패널 -----------------------------
     WeatherWidget = new WeatherPanel(ui->centralWidget);
     WeatherWidget->setGeometry(900, 1200, 1023, 500);
     WeatherWidget->hide();
@@ -132,12 +132,12 @@ MainWindow::MainWindow(QWidget *parent)
             WeatherWidget->show();
         });
 
-    // -- MusicBar ---------------------------------
+    // -- 뮤직바 ---------------------------------
     musicBar = new MusicBar(ui->centralWidget);
     musicBar->setGeometry(960, 380, 920, 150);
     musicBar->show();
 
-    // -- UI layout ----------------------------------
+    // -- UI 레이아웃 ----------------------------------
     ui->dateLabel->move(1500, 24);
     ui->timeLabel->move(1440, 48);
     ui->lcdNumberTemp->move(1320, 175);
@@ -154,7 +154,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->label_2->resize(100, 46);
     ui->labelAQI->resize(200, 36);
 
-    // -- NewsPanel --------------------------------
+    // -- 뉴스 패널 --------------------------------
     newsWidget = new NewsPanel(ui->centralWidget);
     newsWidget->setGeometry(1920, 520, 760, 620);
     newsWidget->hide();
@@ -180,16 +180,16 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-// -- Arduino data received (main thread) ----------
+// -- 아두이노 데이터 수신 (메인 스레드) ----------
 void MainWindow::onArduinoDataReceived(const QString &data)
 {
     processData(data);
 }
 
-// -- Gesture data received (main thread) ----------
+// -- 제스처 데이터 수신 (메인 스레드) ----------
 void MainWindow::onGestureDataReceived(const QString &gesture)
 {
-    qDebug() << "[Gesture verified] Entry command:" << gesture;
+    qDebug() << "[제스처 확인] 진입 명령:" << gesture;
 
     if (gesture.startsWith("KEYWORD"))
     {
@@ -206,7 +206,7 @@ void MainWindow::onGestureDataReceived(const QString &gesture)
 
         if (isPaused && m_musicWorker)
         {
-            qDebug() << "[START - Resume] Exiting pause: resuming from where it stopped.";
+            qDebug() << "[START - 재개] 일시정지 해제: 멈춘 지점부터 재생.";
             QMetaObject::invokeMethod(m_musicWorker, "resume", Qt::QueuedConnection);
             isPaused = false;
             musicBar->setPlaying(true);
@@ -220,7 +220,7 @@ void MainWindow::onGestureDataReceived(const QString &gesture)
     {
         if (m_musicWorker)
         {
-            qDebug() << "[STOP] Gesture detected: music pause command";
+            qDebug() << "[STOP] 제스처 감지: 음악 일시정지 명령";
             QMetaObject::invokeMethod(m_musicWorker, "pause", Qt::QueuedConnection);
             isPaused = true;
             musicBar->setPlaying(false);
@@ -230,7 +230,7 @@ void MainWindow::onGestureDataReceived(const QString &gesture)
     {
         if (m_musicWorker)
         {
-            qDebug() << "[END] Gesture detected: fully terminate all audio playback processes.";
+            qDebug() << "[END] 제스처 감지: 모든 오디오 재생 완전 종료.";
             QMetaObject::invokeMethod(m_musicWorker, "stop", Qt::QueuedConnection);
             isPaused = false;
             musicBar->setPlaying(false);
@@ -241,12 +241,12 @@ void MainWindow::onGestureDataReceived(const QString &gesture)
     }
     else if (gesture == "LEFT")
     {
-        qDebug() << "[LEFT] News panel";
+        qDebug() << "[LEFT] 뉴스 패널";
         showNewsPanel();
     }
     else if (gesture == "RIGHT")
     {
-        qDebug() << "[RIGHT] Weather panel";
+        qDebug() << "[RIGHT] 날씨 패널";
         showWeatherPanel();
     }
     else if (gesture == "VOLUME_UP")
@@ -259,7 +259,7 @@ void MainWindow::onGestureDataReceived(const QString &gesture)
     }
 }
 
-// -- Music Worker callbacks -----------------------
+// -- 음악 워커 콜백 -----------------------
 void MainWindow::onTrackInfoReady(const QString &title, int durationSeconds)
 {
     musicBar->setTrackTitle(title);
@@ -281,10 +281,10 @@ void MainWindow::onPlaybackStopped()
     musicBar->setPlaying(false);
 }
 
-// -- Start music search ---------------------------
+// -- 음악 검색 시작 ---------------------------
 void MainWindow::startMusicSearch()
 {
-    qDebug() << "[START - New] First playback detected: launching mpv streaming.";
+    qDebug() << "[START - 신규] 첫 재생 감지: mpv 스트리밍 시작.";
 
     if (keyword.isEmpty())
         keyword = "calm";
@@ -295,7 +295,7 @@ void MainWindow::startMusicSearch()
     isPaused = false;
 }
 
-// -- Apply brightness overlay ---------------------
+// -- 밝기 오버레이 적용 ---------------------
 void MainWindow::applyBrightness(int briVal)
 {
     int brightness = qBound(80, (briVal * 255) / 550, 255);
@@ -327,7 +327,7 @@ void MainWindow::applyBrightness(int briVal)
     newsWidget->setTextBrightness(brightness);
 }
 
-// -- Data parsing and UI update (main thread) -----
+// -- 데이터 파싱 및 UI 갱신 (메인 스레드) -----
 void MainWindow::processData(const QString &data)
 {
     if (data == "OFF")
@@ -374,12 +374,12 @@ void MainWindow::processData(const QString &data)
         QString emoji;
         switch (aqiVal)
         {
-        case 1: emoji = "Good"; break;
-        case 2: emoji = "Moderate"; break;
-        case 3: emoji = "Bad"; break;
-        case 4: emoji = "Hazardous"; break;
-        case 5: emoji = "Deadly"; break;
-        default: emoji = "Error"; break;
+        case 1: emoji = "좋음"; break;
+        case 2: emoji = "보통"; break;
+        case 3: emoji = "나쁨"; break;
+        case 4: emoji = "매우 나쁨"; break;
+        case 5: emoji = "위험"; break;
+        default: emoji = "오류"; break;
         }
         ui->labelAQI->setText(emoji);
 
@@ -396,7 +396,7 @@ void MainWindow::processData(const QString &data)
     }
 }
 
-// -- Clock update ---------------------------------
+// -- 시계 갱신 ---------------------------------
 void MainWindow::updateTime()
 {
     QDateTime current = QDateTime::currentDateTime();
@@ -406,13 +406,13 @@ void MainWindow::updateTime()
     ui->timeLabel->setText(current.toString("h:mm"));
 }
 
-// -- Window resize --------------------------------
+// -- 창 크기 조정 --------------------------------
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
 }
 
-// -- Show Weather Panel ---------------------------
+// -- 날씨 패널 표시 ---------------------------
 void MainWindow::showWeatherPanel()
 {
     if (animationRunning)
@@ -447,7 +447,7 @@ void MainWindow::showWeatherPanel()
     });
 }
 
-// -- Show News Panel ------------------------------
+// -- 뉴스 패널 표시 ------------------------------
 void MainWindow::showNewsPanel()
 {
     if (animationRunning)
