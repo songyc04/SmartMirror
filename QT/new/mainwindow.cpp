@@ -133,14 +133,14 @@ MainWindow::MainWindow(QWidget *parent)
         this,
         [=]()
         {
-            WeatherWidget->move(900, 460);
+            WeatherWidget->move(900, 550);
             WeatherWidget->show();
             blackOverlay->raise();
         });
 
     // ── MusicBar ─────────────────────────────────
     musicBar = new MusicBar(ui->centralWidget);
-    musicBar->setGeometry(1070, 400, 810, 270);
+    musicBar->setGeometry(960, 380, 920, 150);
     musicBar->show();
     musicBar->stackUnder(blackOverlay);
 
@@ -446,7 +446,7 @@ void MainWindow::showWeatherPanel()
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
     weatherAnim->setStartValue(QPoint(900, 1200));
-    weatherAnim->setEndValue(QPoint(900, 460));
+    weatherAnim->setEndValue(QPoint(900, 550));
 
     newsAnim->start(QAbstractAnimation::DeleteWhenStopped);
     weatherAnim->start(QAbstractAnimation::DeleteWhenStopped);
@@ -475,7 +475,7 @@ void MainWindow::showNewsPanel()
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
-    weatherAnim->setStartValue(QPoint(900, 460));
+    weatherAnim->setStartValue(QPoint(900, 550));
     weatherAnim->setEndValue(QPoint(900, 1200));
 
     QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");

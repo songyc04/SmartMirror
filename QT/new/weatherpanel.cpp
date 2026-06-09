@@ -73,8 +73,8 @@ WeatherPanel::WeatherPanel(QWidget *parent)
     // ── 패널 스타일 ──────────────────────────
     this->setStyleSheet(
         "QWidget {"
-        "background:rgba(30,30,30,220);"
-        "border:2px solid white;"
+        "background:rgba(15,18,25,230);"
+        "border:1px solid rgba(142,205,247,0.25);"
         "border-radius:20px;"
         "color:white;"
         "}");
@@ -149,22 +149,22 @@ WeatherPanel::WeatherPanel(QWidget *parent)
 
     // ── 현재날씨 레이블 스타일 ───────────────
     ui->labelLocation->setStyleSheet(
-        "font-size:24px; font-weight:bold;"
+        "font-size:20px; font-weight:600; color:#8ecdf7;"
         "background:transparent; border:none;");
     ui->labelIcon->setStyleSheet(
-        "font-size:78px; background:transparent; border:none;");
+        "font-size:68px; background:transparent; border:none;");
     ui->labelTemp->setStyleSheet(
-        "font-size:58px; font-weight:bold;"
+        "font-size:52px; font-weight:bold; color:#ffffff;"
         "background:transparent; border:none;");
     ui->labelWeather->setStyleSheet(
-        "font-size:32px; background:transparent; border:none;");
+        "font-size:26px; color:#cccccc; background:transparent; border:none;");
     ui->labelDetail->setStyleSheet(
-        "font-size:18px; background:transparent; border:none;");
+        "font-size:16px; color:#999999; background:transparent; border:none;");
 
     // ── Forecast 카드 그림자 ─────────────────
     ui->forecastCard->setStyleSheet(
-        "background:rgba(255,255,255,0.08);"
-        "border-radius:25px; border:none;");
+        "background:rgba(142,205,247,0.06);"
+        "border-radius:18px; border:1px solid rgba(142,205,247,0.12);");
 
     QGraphicsDropShadowEffect *shadow =
         new QGraphicsDropShadowEffect(this);
@@ -708,8 +708,8 @@ void WeatherPanel::setTextBrightness(int value)
     this->setStyleSheet(
         QString(
             "QWidget {"
-            "background:rgba(30,30,30,220);"
-            "border:2px solid %1;"
+            "background:rgba(15,18,25,230);"
+            "border:1px solid rgba(142,205,247,0.25);"
             "border-radius:20px;"
             "color:%1;"
             "}").arg(color));

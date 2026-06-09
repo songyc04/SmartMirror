@@ -281,23 +281,27 @@ void MusicPlayerWorker::sendMpvIpcCommand(const QString &jsonCommand)
 
 int MusicPlayerWorker::parseDuration(const QString &durationStr) const
 {
-    QStringList timeParts = durationStr.trimmed().split(':');
-    int durationInSeconds = 0;
+    QString trimmed = durationStr.trimmed();
 
-    if (timeParts.size() == 2)
+    if (trimmed.contains(':'))
     {
-        durationInSeconds = (timeParts.at(0).toInt() * 60) + timeParts.at(1).toInt();
-    }
-    else if (timeParts.size() == 3)
-    {
-        durationInSeconds = (timeParts.at(0).toInt() * 3600)
-                          + (timeParts.at(1).toInt() * 60)
-                          + timeParts.at(2).toInt();
-    }
-    else if (!timeParts.isEmpty())
-    {
-        durationInSeconds = timeParts.at(0).toInt();
+        QStringList timeParts = trimmed.split(':');
+        int durationInSeconds = 0;
+
+        if (timeParts.size() == 2)
+        {
+            durationInSeconds = (timeParts.at(0).toInt() * 60)
+                              + qRound(timeParts.at(1).toDouble());
+        }
+        else if (timeParts.size() == 3)
+        {
+            durationInSeconds = (timeParts.at(0).toInt() * 3600)
+                              + (timeParts.at(1).toInt() * 60)
+                              + qRound(timeParts.at(2).toDouble());
+        }
+
+        return durationInSeconds;
     }
 
-    return durationInSeconds;
+    return qRound(trimmed.toDouble());
 }

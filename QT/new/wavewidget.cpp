@@ -9,8 +9,8 @@ WaveWidget::WaveWidget(QWidget *parent)
       mPlaying(false)
 {
     setAttribute(Qt::WA_OpaquePaintEvent, false);
-    setMinimumHeight(110);
-    setMaximumHeight(110);
+    setMinimumHeight(50);
+    setMaximumHeight(50);
 
     mBars.resize(BAR_COUNT);
     mTargets.resize(BAR_COUNT);

@@ -132,10 +132,10 @@ void MusicBar::paintEvent(QPaintEvent *)
     painter.setRenderHint(QPainter::Antialiasing);
 
     QPainterPath path;
-    path.addRoundedRect(rect().adjusted(1, 1, -1, -1), 24, 24);
+    path.addRoundedRect(rect().adjusted(1, 1, -1, -1), 18, 18);
 
-    painter.setPen(QPen(QColor(255, 255, 255, 22), 1));
-    painter.setBrush(QColor(20, 20, 28, 210));
+    painter.setPen(QPen(QColor(142, 205, 247, 30), 1));
+    painter.setBrush(QColor(15, 18, 25, 220));
     painter.drawPath(path);
 }
 
@@ -145,86 +145,89 @@ void MusicBar::applyStyles()
     setAttribute(Qt::WA_StyledBackground, false);
 
     ui->lblMusicIcon->setStyleSheet(
-        "color:#e8e8e8; font-size:20pt; background:transparent;"
+        "color:#8ecdf7; font-size:16pt; background:transparent;"
     );
 
     ui->lblTrackTitle->setStyleSheet(
-        "color:#ffffff; font-size:14pt; font-weight:600;"
+        "color:#ffffff; font-size:12pt; font-weight:600;"
         "letter-spacing:1px; background:transparent;"
         "font-family:'Futura','Trebuchet MS','Franklin Gothic Medium',sans-serif;"
     );
 
     ui->lblBarsIcon->setStyleSheet(
-        "color:#777777; font-size:14pt; background:transparent;"
+        "color:#555555; font-size:11pt; background:transparent;"
     );
 
     ui->waveContainer->setStyleSheet("background:transparent;");
-    ui->waveContainer->setFixedHeight(100);
+    ui->waveContainer->setFixedHeight(50);
 
     QString timeStyle =
-        "color:#aaaaaa; font-size:12pt; font-weight:500;"
+        "color:#888888; font-size:10pt; font-weight:500;"
         "background:transparent;"
         "font-family:'Courier New','Consolas',monospace;";
     ui->lblCurrentTime->setStyleSheet(timeStyle);
     ui->lblTotalTime->setStyleSheet(timeStyle);
 
     ui->progressSlider->setStyleSheet(R"(
-        QSlider { height: 24px; }
+        QSlider { height: 16px; }
 
         QSlider::groove:horizontal {
-            height: 3px;
-            background: rgba(255,255,255,0.12);
-            border-radius: 2px;
+            height: 2px;
+            background: rgba(255,255,255,0.10);
+            border-radius: 1px;
         }
         QSlider::sub-page:horizontal {
-            background: rgba(255,255,255,0.55);
-            border-radius: 2px;
+            height: 2px;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 #5b9bd5, stop:1 #8ecdf7);
+            border-radius: 1px;
         }
         QSlider::add-page:horizontal {
-            background: rgba(255,255,255,0.10);
-            border-radius: 2px;
+            height: 2px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 1px;
         }
         QSlider::handle:horizontal {
-            width: 13px;
-            height: 13px;
-            margin: -6px 0;
-            border-radius: 7px;
-            background: #ffffff;
-            border: 2px solid rgba(255,255,255,0.20);
+            width: 10px;
+            height: 10px;
+            margin: -5px 0;
+            border-radius: 5px;
+            background: #8ecdf7;
+            border: none;
         }
         QSlider::handle:horizontal:hover {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             margin: -7px 0;
-            border-radius: 8px;
+            border-radius: 7px;
             background: #ffffff;
-            border: 2px solid rgba(255,255,255,0.35);
+            border: none;
         }
         QSlider::handle:horizontal:pressed {
-            background: #eeeeee;
-            border: 2px solid rgba(255,255,255,0.25);
+            background: #5b9bd5;
+            border: none;
         }
     )");
 
     QString sideBtn = R"(
         QToolButton {
-            border: none; font-size: 17pt; font-weight: 300;
-            background: transparent; color: #bbbbbb;
-            border-radius: 10px; padding: 3px 12px;
+            border: none; font-size: 13pt; font-weight: 300;
+            background: transparent; color: #999999;
+            border-radius: 8px; padding: 2px 8px;
         }
-        QToolButton:hover   { background: rgba(255,255,255,0.10); color: #ffffff; }
-        QToolButton:pressed { background: rgba(255,255,255,0.16); }
+        QToolButton:hover   { background: rgba(255,255,255,0.08); color: #ffffff; }
+        QToolButton:pressed { background: rgba(255,255,255,0.14); }
     )";
     ui->btnPrev->setStyleSheet(sideBtn);
     ui->btnNext->setStyleSheet(sideBtn);
 
     ui->btnPlay->setStyleSheet(R"(
         QToolButton {
-            border: none; font-size: 20pt;
-            background: rgba(255,255,255,0.08); color: #ffffff;
-            border-radius: 12px; padding: 3px 14px;
+            border: none; font-size: 16pt;
+            background: rgba(142,205,247,0.12); color: #8ecdf7;
+            border-radius: 10px; padding: 2px 12px;
         }
-        QToolButton:hover   { background: rgba(255,255,255,0.16); }
-        QToolButton:pressed { background: rgba(255,255,255,0.24); }
+        QToolButton:hover   { background: rgba(142,205,247,0.22); color: #ffffff; }
+        QToolButton:pressed { background: rgba(142,205,247,0.32); }
     )");
 }
