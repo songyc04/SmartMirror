@@ -2,7 +2,7 @@
 #include <QDebug>
 #include <QProcessEnvironment>
 #include <QRegularExpression>
-#include <QRandomGenerator>
+#include <QDateTime>
 
 MusicPlayerWorker::MusicPlayerWorker(QObject *parent)
     : QObject(parent)
@@ -42,7 +42,9 @@ void MusicPlayerWorker::searchAndPlay(const QString &keyword)
         m_ytDlpProcess->waitForFinished(1000);
     }
 
-    int targetRank = QRandomGenerator::global()->bounded(1, 11);
+    qsrand(static_cast<uint>(QDateTime::currentMSecsSinceEpoch()));
+
+    int targetRank = (qrand() % 10) + 1;
     qDebug() << "검색 키워드:" << m_keyword;
     qDebug() << "조회수 정렬:" << targetRank << "등 노래 추출 완료";
 
