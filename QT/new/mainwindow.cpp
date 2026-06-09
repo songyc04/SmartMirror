@@ -94,26 +94,28 @@ MainWindow::MainWindow(QWidget *parent)
     this->setStyleSheet("background-color:black;");
 
     ui->dateLabel->setStyleSheet(
-        "color:white;"
-        "font-size:12pt;"
+        "color:#cccccc;"
+        "font-size:11pt;"
         "font-weight:400;"
+        "letter-spacing:1px;"
         "background:none;");
     ui->timeLabel->setStyleSheet(
         "color:white;"
-        "font-size:45pt;"
+        "font-size:48pt;"
         "font-weight:bold;"
-        "margin-top:-5px;"
+        "letter-spacing:-1px;"
         "background:none;");
     ui->labelAQI->setStyleSheet(
         "color:white;"
-        "font-size:20pt;"
+        "font-size:18pt;"
+        "font-weight:500;"
         "background:none;");
 
     ui->lcdNumberTemp->setSegmentStyle(QLCDNumber::Filled);
     ui->lcdNumberHumi->setSegmentStyle(QLCDNumber::Filled);
 
-    ui->lcdNumberTemp->setStyleSheet("background:#111;");
-    ui->lcdNumberHumi->setStyleSheet("background:#111;");
+    ui->lcdNumberTemp->setStyleSheet("background:#151515; border-radius:8px;");
+    ui->lcdNumberHumi->setStyleSheet("background:#151515; border-radius:8px;");
 
     // ── 화면 ON/OFF 오버레이 ──────────────────────
     blackOverlay = new QFrame(ui->centralWidget);
@@ -138,24 +140,26 @@ MainWindow::MainWindow(QWidget *parent)
 
     // ── MusicBar ─────────────────────────────────
     musicBar = new MusicBar(ui->centralWidget);
-    musicBar->setGeometry(40, 40, 900, 260);
+    musicBar->setGeometry(1070, 400, 810, 270);
     musicBar->show();
     musicBar->stackUnder(blackOverlay);
 
     // ── UI 배치 ──────────────────────────────────
-    ui->dateLabel->move(1450, 20);
-    ui->timeLabel->move(1380, 50);
-    ui->lcdNumberTemp->move(1280, 180);
-    ui->label->move(1430, 180);
-    ui->lcdNumberHumi->move(1280, 260);
-    ui->label_2->move(1430, 260);
-    ui->labelAQI->move(1280, 360);
+    ui->dateLabel->move(1500, 24);
+    ui->timeLabel->move(1440, 48);
+    ui->lcdNumberTemp->move(1320, 175);
+    ui->label->move(1440, 175);
+    ui->lcdNumberHumi->move(1320, 245);
+    ui->label_2->move(1440, 245);
+    ui->labelAQI->move(1320, 325);
 
-    ui->timeLabel->resize(400, 120);
-    ui->lcdNumberTemp->resize(130, 50);
-    ui->lcdNumberHumi->resize(130, 50);
-    ui->label->resize(120, 50);
-    ui->label_2->resize(160, 50);
+    ui->dateLabel->resize(220, 32);
+    ui->timeLabel->resize(380, 110);
+    ui->lcdNumberTemp->resize(110, 46);
+    ui->lcdNumberHumi->resize(110, 46);
+    ui->label->resize(80, 46);
+    ui->label_2->resize(100, 46);
+    ui->labelAQI->resize(200, 36);
 
     // ── NewsPanel ────────────────────────────────
     newsWidget = new NewsPanel(ui->centralWidget);
@@ -306,13 +310,13 @@ void MainWindow::applyBrightness(int briVal)
     QString color = QString("rgb(%1,%1,%1)").arg(brightness);
 
     ui->dateLabel->setStyleSheet(
-        QString("color:%1; font-size:12pt; font-weight:400; background:none;").arg(color));
+        QString("color:%1; font-size:11pt; font-weight:400; letter-spacing:1px; background:none;").arg(color));
 
     ui->timeLabel->setStyleSheet(
-        QString("color:%1; font-size:45pt; font-weight:bold; margin-top:-5px; background:none;").arg(color));
+        QString("color:%1; font-size:48pt; font-weight:bold; letter-spacing:-1px; background:none;").arg(color));
 
     ui->labelAQI->setStyleSheet(
-        QString("color:%1; font-size:20pt; background:none; font-family:'Noto Color Emoji';").arg(color));
+        QString("color:%1; font-size:18pt; font-weight:500; background:none;").arg(color));
 
     QColor lcdColor(brightness, brightness, brightness);
 

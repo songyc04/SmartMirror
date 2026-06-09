@@ -100,7 +100,7 @@ void WaveWidget::paintEvent(QPaintEvent *)
         barPath.addRoundedRect(barRect, 3, 3);
 
         p.setPen(Qt::NoPen);
-        p.setBrush(QColor("#1a1a1a"));
+        p.setBrush(QColor("#e0e0e0"));
         p.drawPath(barPath);
 
         // ── 반사 바 (페이드 아웃) ────────────────────
@@ -109,8 +109,8 @@ void WaveWidget::paintEvent(QPaintEvent *)
 
         // 위에서 아래로 투명해지는 그라디언트
         QLinearGradient grad(0, reflStart, 0, reflStart + rh);
-        grad.setColorAt(0.0, QColor(30, 30, 30, 90));
-        grad.setColorAt(1.0, QColor(30, 30, 30, 0));
+        grad.setColorAt(0.0, QColor(220, 220, 220, 70));
+        grad.setColorAt(1.0, QColor(220, 220, 220, 0));
         p.setBrush(grad);
 
         QPainterPath reflPath;

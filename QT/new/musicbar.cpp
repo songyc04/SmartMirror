@@ -132,10 +132,10 @@ void MusicBar::paintEvent(QPaintEvent *)
     painter.setRenderHint(QPainter::Antialiasing);
 
     QPainterPath path;
-    path.addRoundedRect(rect(), 28, 28);
+    path.addRoundedRect(rect().adjusted(1, 1, -1, -1), 24, 24);
 
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(QColor("#f5f5f3"));
+    painter.setPen(QPen(QColor(255, 255, 255, 22), 1));
+    painter.setBrush(QColor(20, 20, 28, 210));
     painter.drawPath(path);
 }
 
@@ -145,88 +145,86 @@ void MusicBar::applyStyles()
     setAttribute(Qt::WA_StyledBackground, false);
 
     ui->lblMusicIcon->setStyleSheet(
-        "color:#1a1a1a; font-size:22pt; background:transparent;"
+        "color:#e8e8e8; font-size:20pt; background:transparent;"
     );
 
     ui->lblTrackTitle->setStyleSheet(
-        "color:#111111; font-size:15pt; font-weight:700;"
-        "letter-spacing:2px; background:transparent;"
+        "color:#ffffff; font-size:14pt; font-weight:600;"
+        "letter-spacing:1px; background:transparent;"
         "font-family:'Futura','Trebuchet MS','Franklin Gothic Medium',sans-serif;"
     );
 
     ui->lblBarsIcon->setStyleSheet(
-        "color:#888888; font-size:16pt; background:transparent;"
+        "color:#777777; font-size:14pt; background:transparent;"
     );
 
-    // waveContainer는 반드시 배경 투명 + 고정 높이 110px
     ui->waveContainer->setStyleSheet("background:transparent;");
-    ui->waveContainer->setFixedHeight(110);
+    ui->waveContainer->setFixedHeight(100);
 
     QString timeStyle =
-        "color:#1a1a1a; font-size:13pt; font-weight:600;"
+        "color:#aaaaaa; font-size:12pt; font-weight:500;"
         "background:transparent;"
         "font-family:'Courier New','Consolas',monospace;";
     ui->lblCurrentTime->setStyleSheet(timeStyle);
     ui->lblTotalTime->setStyleSheet(timeStyle);
 
     ui->progressSlider->setStyleSheet(R"(
-        QSlider { height: 28px; }
+        QSlider { height: 24px; }
 
         QSlider::groove:horizontal {
             height: 3px;
-            background: #d0d0ce;
+            background: rgba(255,255,255,0.12);
             border-radius: 2px;
-            margin: 0 1px;
         }
         QSlider::sub-page:horizontal {
-            background: #2a2a2a;
+            background: rgba(255,255,255,0.55);
             border-radius: 2px;
         }
         QSlider::add-page:horizontal {
-            background: #d0d0ce;
+            background: rgba(255,255,255,0.10);
             border-radius: 2px;
         }
         QSlider::handle:horizontal {
-            width: 14px;
-            height: 14px;
+            width: 13px;
+            height: 13px;
             margin: -6px 0;
             border-radius: 7px;
             background: #ffffff;
-            border: 2px solid #f5f5f3;
+            border: 2px solid rgba(255,255,255,0.20);
         }
         QSlider::handle:horizontal:hover {
-            width: 18px;
-            height: 18px;
-            margin: -8px 0;
-            border-radius: 9px;
+            width: 16px;
+            height: 16px;
+            margin: -7px 0;
+            border-radius: 8px;
             background: #ffffff;
-            border: 2px solid #f5f5f3;
+            border: 2px solid rgba(255,255,255,0.35);
         }
         QSlider::handle:horizontal:pressed {
-            background: #000000;
-            border: 2px solid #e8e8e6;
+            background: #eeeeee;
+            border: 2px solid rgba(255,255,255,0.25);
         }
     )");
 
     QString sideBtn = R"(
         QToolButton {
-            border: none; font-size: 18pt; font-weight: 300;
-            background: transparent; color: #444444;
-            border-radius: 12px; padding: 2px 12px; letter-spacing: -2px;
+            border: none; font-size: 17pt; font-weight: 300;
+            background: transparent; color: #bbbbbb;
+            border-radius: 10px; padding: 3px 12px;
         }
-        QToolButton:hover   { background: rgba(0,0,0,0.07); color: #111111; }
-        QToolButton:pressed { background: rgba(0,0,0,0.14); }
+        QToolButton:hover   { background: rgba(255,255,255,0.10); color: #ffffff; }
+        QToolButton:pressed { background: rgba(255,255,255,0.16); }
     )";
     ui->btnPrev->setStyleSheet(sideBtn);
     ui->btnNext->setStyleSheet(sideBtn);
 
     ui->btnPlay->setStyleSheet(R"(
         QToolButton {
-            border: none; font-size: 22pt;
-            background: transparent; color: #111111;
-            border-radius: 14px; padding: 2px 14px;
+            border: none; font-size: 20pt;
+            background: rgba(255,255,255,0.08); color: #ffffff;
+            border-radius: 12px; padding: 3px 14px;
         }
-        QToolButton:hover   { background: rgba(0,0,0,0.09); }
-        QToolButton:pressed { background: rgba(0,0,0,0.18); }
+        QToolButton:hover   { background: rgba(255,255,255,0.16); }
+        QToolButton:pressed { background: rgba(255,255,255,0.24); }
     )");
 }

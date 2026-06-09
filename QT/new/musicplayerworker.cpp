@@ -1,7 +1,6 @@
 #include "musicplayerworker.h"
 #include <QDebug>
 #include <QProcessEnvironment>
-#include <QRegularExpression>
 #include <QDateTime>
 
 MusicPlayerWorker::MusicPlayerWorker(QObject *parent)
@@ -49,13 +48,15 @@ void MusicPlayerWorker::searchAndPlay(const QString &keyword)
     qDebug() << "조회수 정렬:" << targetRank << "등 노래 추출 완료";
 
     QString cmd = QString("/home/jt-user/py310/bin/yt-dlp \"ytsearch%1:%2\" ")
-                      .arg(m_searchCount)
-                      .arg(m_keyword)
-                  + "--match-filter \"duration <= 600\" "
-                  + "--flat-playlist --print \"%(view_count)012d %(url)s\" "
-                  + "| sort -r | head -n "
-                  + QString::number(targetRank)
-                  + " | awk '{print $2}'";
+                       .arg(m_searchCount)
+                       .arg(m_keyword)
+                   + "--match-filter \"duration <= 600\" "
+                   + "--flat-playlist "
+                   + "--print \"%(view_count)012d|%(url)s|%(title)s|%(duration)s\" "
+                   + "| sort -t'|' -k1 -rn "
+                   + "| head -n "
+                   + QString::number(targetRank)
+                   + " | tail -1";
 
     m_ytDlpProcess->disconnect();
 
@@ -85,72 +86,66 @@ void MusicPlayerWorker::onYtDlpFinished(int exitCode, QProcess::ExitStatus exitS
 
     m_ytDlpProcess->readAllStandardError();
 
-    QString audioUrl = QString::fromUtf8(m_ytDlpProcess->readAllStandardOutput()).trimmed();
+    QString rawOutput = QString::fromUtf8(m_ytDlpProcess->readAllStandardOutput()).trimmed();
 
-    if (audioUrl.contains('\n'))
+    if (rawOutput.isEmpty())
     {
-        audioUrl = audioUrl.section('\n', -1, -1).trimmed();
-    }
-
-    if (audioUrl.isEmpty() || !audioUrl.startsWith("http"))
-    {
-        qWarning() << "유효한 유튜브 주소를 획득하지 못했습니다. 수신 데이터:" << audioUrl;
+        qWarning() << "yt-dlp 출력이 비어있습니다.";
         emit errorOccurred("유효하지 않은 URL");
         return;
     }
 
-    qDebug() << "URL:" << audioUrl;
+    QString outputLine = rawOutput.contains('\n')
+        ? rawOutput.section('\n', -1, -1).trimmed()
+        : rawOutput;
 
-    QProcess infoProcess;
-    infoProcess.start("/home/jt-user/py310/bin/yt-dlp",
-                      QStringList() << "--skip-download"
-                                    << "--get-duration"
-                                    << "--print" << "title"
-                                    << audioUrl);
+    QStringList fields = outputLine.split('|');
 
-    if (!infoProcess.waitForFinished(30000))
-    {
-        qDebug() << "yt-dlp 정보 요청 시간 초과";
-        emit errorOccurred("yt-dlp 제목/길이 요청 시간 초과");
-        return;
-    }
-
-    QString output = QString::fromUtf8(infoProcess.readAllStandardOutput()).trimmed();
-    QString errorOutput = QString::fromUtf8(infoProcess.readAllStandardError()).trimmed();
-
-    qDebug() << "OUTPUT:" << output;
-    if (output.isEmpty())
-    {
-        qDebug() << "Error: 출력된 데이터가 없습니다.";
-    }
-
-    QStringList outputList = output.split(QRegularExpression("[\r\n]+"), QString::SkipEmptyParts);
-
+    QString audioUrl;
     QString videoTitle = "알 수 없는 제목";
-    QString videoDuration = "00:00";
+    QString videoDuration = "0";
+    int urlIdx = -1;
 
-    if (outputList.size() >= 2)
+    for (int i = 1; i < fields.size(); i++)
     {
-        videoTitle = outputList.at(0);
-        videoDuration = outputList.at(1);
+        if (fields[i].startsWith("https://"))
+        {
+            urlIdx = i;
+            break;
+        }
     }
-    else if (outputList.size() == 1)
+
+    if (urlIdx > 0)
     {
-        videoTitle = outputList.at(0);
+        audioUrl = fields[urlIdx];
     }
     else
     {
-        qWarning() << "제목과 길이 데이터를 파싱할 수 없습니다.";
+        qWarning() << "유효한 유튜브 주소를 획득하지 못했습니다. 수신 데이터:" << outputLine;
+        emit errorOccurred("유효하지 않은 URL");
+        return;
     }
+
+    if (urlIdx + 1 < fields.size() - 1)
+    {
+        QStringList titleParts;
+        for (int i = urlIdx + 1; i < fields.size() - 1; i++)
+            titleParts << fields[i];
+        videoTitle = titleParts.join('|');
+    }
+
+    if (fields.size() > urlIdx + 1)
+        videoDuration = fields.last();
 
     int durationInSeconds = parseDuration(videoDuration);
 
     qDebug() << "=========================";
+    qDebug() << "URL:" << audioUrl;
     qDebug() << "제목:" << videoTitle;
-    qDebug() << "길이:" << videoDuration;
+    qDebug() << "길이(raw):" << videoDuration << "→" << durationInSeconds << "초";
     qDebug() << "=========================";
 
-    qDebug() << m_searchCount << "개 중 조회수가 가장 높은 영상 URL 추출 성공:" << audioUrl;
+    qDebug() << m_searchCount << "개 중 조회수가 높은 영상 URL 추출 성공:" << audioUrl;
 
     emit trackInfoReady(videoTitle, durationInSeconds);
 
