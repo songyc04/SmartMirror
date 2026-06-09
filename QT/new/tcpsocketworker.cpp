@@ -20,13 +20,13 @@ void TcpSocketWorker::initialize()
 
     if (!m_server->listen(QHostAddress::Any, ARDUINO_PORT))
     {
-        qWarning() << "TCP 9000 서버 시작 실패:" << m_server->errorString();
-        emit connectionStatus("9000 서버 시작 실패");
+        qWarning() << "TCP 9000 server start failed:" << m_server->errorString();
+        emit connectionStatus("9000 server start failed");
     }
     else
     {
-        qDebug() << "아두이노 대기 중 - 포트:" << ARDUINO_PORT;
-        emit connectionStatus("9000 서버 대기 중");
+        qDebug() << "Arduino waiting - port:" << ARDUINO_PORT;
+        emit connectionStatus("9000 server waiting");
     }
 }
 
@@ -60,8 +60,8 @@ void TcpSocketWorker::onNewConnection()
     connect(m_socket, &QTcpSocket::disconnected,
             this, &TcpSocketWorker::onDisconnected);
 
-    qDebug() << "아두이노 연결됨:" << m_socket->peerAddress().toString();
-    emit connectionStatus("아두이노 연결됨");
+    qDebug() << "Arduino connected:" << m_socket->peerAddress().toString();
+    emit connectionStatus("Arduino connected");
 }
 
 void TcpSocketWorker::onReadyRead()
@@ -80,16 +80,16 @@ void TcpSocketWorker::onReadyRead()
         }
         data = data.trimmed();
 
-        qDebug() << "수신:" << data;
+        qDebug() << "Received:" << data;
         emit dataReceived(data);
     }
 }
 
 void TcpSocketWorker::onDisconnected()
 {
-    qDebug() << "아두이노 연결 종료";
-    qDebug() << "아두이노 대기 중 - 포트:" << ARDUINO_PORT;
-    emit connectionStatus("아두이노 연결 종료");
+    qDebug() << "Arduino disconnected";
+    qDebug() << "Arduino waiting - port:" << ARDUINO_PORT;
+    emit connectionStatus("Arduino disconnected");
 
     if (m_socket)
     {

@@ -17,12 +17,12 @@ public:
     explicit MusicBar(QWidget *parent = nullptr);
     ~MusicBar();
 
-    // 외부에서 트랙 정보 설정
+    // Set track info from outside
     void setTrackTitle(const QString &title);
     void setTotalSeconds(int secs);
     void setCurrentSeconds(int secs);
 
-    // 재생 제어
+    // Playback control
     void setPlaying(bool playing);
     bool isPlaying() const { return mIsPlaying; }
 
@@ -32,7 +32,7 @@ signals:
     void playClicked();
     void prevClicked();
     void nextClicked();
-    void seeked(int seconds);   // 슬라이더 조작 시
+    void seeked(int seconds);   // When slider is moved
 
 private slots:
     void onPlayClicked();

@@ -18,8 +18,8 @@ protected:
     void paintEvent(QPaintEvent *event) override;
 
 private:
-    QVector<qreal> mBars;      // 각 바의 높이 (0.0 ~ 1.0)
-    QVector<qreal> mTargets;   // 애니메이션 목표 높이
+    QVector<qreal> mBars;      // Height of each bar (0.0 ~ 1.0)
+    QVector<qreal> mTargets;   // Animation target height
     QTimer         mTimer;
     bool           mPlaying;
 

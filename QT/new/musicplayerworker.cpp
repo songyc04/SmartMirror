@@ -32,11 +32,11 @@ void MusicPlayerWorker::searchAndPlay(const QString &keyword)
     if (!m_ytDlpProcess || !m_mpvProcess)
         return;
 
-    m_keyword = keyword.isEmpty() ? QString("잔잔한") : keyword;
+    m_keyword = keyword.isEmpty() ? QString("calm") : keyword;
 
     if (m_ytDlpProcess->state() != QProcess::NotRunning)
     {
-        qDebug() << "yt-dlp 이전 프로세스를 강제 종료합니다.";
+        qDebug() << "yt-dlp force killing previous process.";
         m_ytDlpProcess->kill();
         m_ytDlpProcess->waitForFinished(1000);
     }
@@ -44,8 +44,8 @@ void MusicPlayerWorker::searchAndPlay(const QString &keyword)
     qsrand(static_cast<uint>(QDateTime::currentMSecsSinceEpoch()));
 
     int targetRank = (qrand() % 10) + 1;
-    qDebug() << "검색 키워드:" << m_keyword;
-    qDebug() << "조회수 정렬:" << targetRank << "등 노래 추출 완료";
+    qDebug() << "Search keyword:" << m_keyword;
+    qDebug() << "View count sort:" << targetRank << "th song extracted";
 
     QString cmd = QString("/home/jt-user/py310/bin/yt-dlp \"ytsearch%1:%2\" ")
                        .arg(m_searchCount)
@@ -79,8 +79,8 @@ void MusicPlayerWorker::onYtDlpFinished(int exitCode, QProcess::ExitStatus exitS
 
     if (exitCode != 0)
     {
-        qWarning() << "yt-dlp URL 추출 실패 (exitCode:" << exitCode << ")";
-        emit errorOccurred("URL 추출 실패");
+        qWarning() << "yt-dlp URL extraction failed (exitCode:" << exitCode << ")";
+        emit errorOccurred("URL extraction failed");
         return;
     }
 
@@ -90,8 +90,8 @@ void MusicPlayerWorker::onYtDlpFinished(int exitCode, QProcess::ExitStatus exitS
 
     if (rawOutput.isEmpty())
     {
-        qWarning() << "yt-dlp 출력이 비어있습니다.";
-        emit errorOccurred("유효하지 않은 URL");
+        qWarning() << "yt-dlp output is empty.";
+        emit errorOccurred("Invalid URL");
         return;
     }
 
@@ -102,7 +102,7 @@ void MusicPlayerWorker::onYtDlpFinished(int exitCode, QProcess::ExitStatus exitS
     QStringList fields = outputLine.split('|');
 
     QString audioUrl;
-    QString videoTitle = "알 수 없는 제목";
+    QString videoTitle = "Unknown title";
     QString videoDuration = "0";
     int urlIdx = -1;
 
@@ -121,8 +121,8 @@ void MusicPlayerWorker::onYtDlpFinished(int exitCode, QProcess::ExitStatus exitS
     }
     else
     {
-        qWarning() << "유효한 유튜브 주소를 획득하지 못했습니다. 수신 데이터:" << outputLine;
-        emit errorOccurred("유효하지 않은 URL");
+        qWarning() << "Failed to obtain valid YouTube URL. Received data:" << outputLine;
+        emit errorOccurred("Invalid URL");
         return;
     }
 
@@ -141,11 +141,11 @@ void MusicPlayerWorker::onYtDlpFinished(int exitCode, QProcess::ExitStatus exitS
 
     qDebug() << "=========================";
     qDebug() << "URL:" << audioUrl;
-    qDebug() << "제목:" << videoTitle;
-    qDebug() << "길이(raw):" << videoDuration << "→" << durationInSeconds << "초";
+    qDebug() << "Title:" << videoTitle;
+    qDebug() << "Duration(raw):" << videoDuration << "->" << durationInSeconds << "sec";
     qDebug() << "=========================";
 
-    qDebug() << m_searchCount << "개 중 조회수가 높은 영상 URL 추출 성공:" << audioUrl;
+    qDebug() << "Top viewed URL extracted from" << m_searchCount << "results:" << audioUrl;
 
     emit trackInfoReady(videoTitle, durationInSeconds);
 
@@ -178,7 +178,7 @@ void MusicPlayerWorker::startMpvWithUrl(const QString &url)
             << "--network-timeout=10"
             << url;
 
-    qDebug() << "mpv 구동 명령어: /usr/bin/mpv" << mpvArgs.join(" ");
+    qDebug() << "mpv command: /usr/bin/mpv" << mpvArgs.join(" ");
 
     m_mpvProcess->start("/usr/bin/mpv", mpvArgs);
     m_isPlaying = true;
@@ -194,7 +194,7 @@ void MusicPlayerWorker::onMpvReadyReadStandardOutput()
 
     if (mpvLog.contains("Starting playback...") || mpvLog.contains("AO: [alsa]"))
     {
-        qDebug() << "mpv 자체 로그 검증 완료 - 실제 노래 재생이 시작되었습니다!";
+        qDebug() << "mpv log verified - actual playback has started!";
         m_isPlaying = true;
         emit playbackStarted();
     }
@@ -202,15 +202,15 @@ void MusicPlayerWorker::onMpvReadyReadStandardOutput()
 
 void MusicPlayerWorker::onMpvError(QProcess::ProcessError error)
 {
-    qWarning() << "mpv 실행 실패:" << error;
-    emit errorOccurred(QString("mpv 실행 실패: %1").arg(error));
+    qWarning() << "mpv execution failed:" << error;
+    emit errorOccurred(QString("mpv execution failed: %1").arg(error));
 }
 
 void MusicPlayerWorker::resume()
 {
     if (m_mpvProcess && m_mpvProcess->state() == QProcess::Running)
     {
-        qDebug() << "음악 재생 재개";
+        qDebug() << "Resuming music playback";
         sendMpvIpcCommand("{\"command\":[\"set_property\",\"pause\",false]}");
         m_isPlaying = true;
         emit playbackStarted();
@@ -221,7 +221,7 @@ void MusicPlayerWorker::pause()
 {
     if (m_mpvProcess && m_mpvProcess->state() == QProcess::Running)
     {
-        qDebug() << "음악 일시정지";
+        qDebug() << "Pausing music playback";
         sendMpvIpcCommand("{\"command\":[\"set_property\",\"pause\",true]}");
         m_isPlaying = false;
         emit playbackPaused();
@@ -232,7 +232,7 @@ void MusicPlayerWorker::stop()
 {
     if (m_mpvProcess && m_mpvProcess->state() != QProcess::NotRunning)
     {
-        qDebug() << "모든 오디오 재생 프로세스를 완전 종료합니다.";
+        qDebug() << "Fully terminating all audio playback processes.";
         m_mpvProcess->kill();
         m_mpvProcess->waitForFinished(1000);
         m_isPlaying = false;
@@ -244,7 +244,7 @@ void MusicPlayerWorker::volumeUp()
 {
     if (m_mpvProcess && m_mpvProcess->state() == QProcess::Running)
     {
-        qDebug() << "mpv 볼륨 5% 증가";
+        qDebug() << "mpv volume up 5%";
         sendMpvIpcCommand("{\"command\":[\"add\",\"volume\",5]}");
     }
 }
@@ -253,7 +253,7 @@ void MusicPlayerWorker::volumeDown()
 {
     if (m_mpvProcess && m_mpvProcess->state() == QProcess::Running)
     {
-        qDebug() << "mpv 볼륨 5% 감소";
+        qDebug() << "mpv volume down 5%";
         sendMpvIpcCommand("{\"command\":[\"add\",\"volume\",-5]}");
     }
 }

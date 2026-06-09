@@ -20,13 +20,13 @@ void GestureSocketWorker::initialize()
 
     if (!m_server->listen(QHostAddress::Any, GESTURE_PORT))
     {
-        qWarning() << "9001 TCP 서버 시작 실패:" << m_server->errorString();
-        emit connectionStatus("9001 서버 시작 실패");
+        qWarning() << "9001 TCP server start failed:" << m_server->errorString();
+        emit connectionStatus("9001 server start failed");
     }
     else
     {
-        qDebug() << "9001 서버 대기 중 - 포트:" << GESTURE_PORT;
-        emit connectionStatus("9001 서버 대기 중");
+        qDebug() << "9001 server waiting - port:" << GESTURE_PORT;
+        emit connectionStatus("9001 server waiting");
     }
 }
 
@@ -60,8 +60,8 @@ void GestureSocketWorker::onNewConnection()
     connect(m_socket, &QTcpSocket::disconnected,
             this, &GestureSocketWorker::onDisconnected);
 
-    qDebug() << "9001 연결됨:" << m_socket->peerAddress().toString();
-    emit connectionStatus("9001 연결됨");
+    qDebug() << "9001 connected:" << m_socket->peerAddress().toString();
+    emit connectionStatus("9001 connected");
 }
 
 void GestureSocketWorker::onReadyRead()
@@ -80,16 +80,16 @@ void GestureSocketWorker::onReadyRead()
         }
         data = data.trimmed();
 
-        qDebug() << "9001 수신:" << data;
+        qDebug() << "9001 received:" << data;
         emit gestureReceived(data);
     }
 }
 
 void GestureSocketWorker::onDisconnected()
 {
-    qDebug() << "9001 연결 종료";
-    qDebug() << "9001 대기 중 - 포트:" << GESTURE_PORT;
-    emit connectionStatus("9001 연결 종료");
+    qDebug() << "9001 disconnected";
+    qDebug() << "9001 waiting - port:" << GESTURE_PORT;
+    emit connectionStatus("9001 disconnected");
 
     if (m_socket)
     {

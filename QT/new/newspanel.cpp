@@ -25,7 +25,7 @@ NewsPanel::NewsPanel(QWidget *parent)
             &NewsPanel::onNewsReply);
 
     //--------------------------------
-    // 전체 스타일
+    // Global style
     //--------------------------------
 
     this->setStyleSheet(
@@ -48,7 +48,7 @@ void NewsPanel::requestNews()
 {
     QString url =
         "https://openapi.naver.com/v1/search/news.json"
-        "?query=속보" //키워드 설정
+        "?query=breaking" //keyword
         "&display=3"
         "&sort=date";
 
@@ -84,7 +84,7 @@ void NewsPanel::onNewsReply(
         obj["items"].toArray();
 
     //--------------------------------
-    // 뉴스 카드 생성
+    // Create news cards
     //--------------------------------
 
     QVBoxLayout *mainLayout =
@@ -106,7 +106,7 @@ void NewsPanel::onNewsReply(
             item["description"].toString();
 
         //--------------------------------
-        // HTML 태그 제거
+        // Remove HTML tags
         //--------------------------------
 
         title.remove("<b>");
@@ -116,7 +116,7 @@ void NewsPanel::onNewsReply(
         desc.remove("</b>");
 
         //--------------------------------
-        // 카드
+        // Card
         //--------------------------------
 
         QFrame *card =
@@ -135,7 +135,7 @@ void NewsPanel::onNewsReply(
         cardLayout->setSpacing(15);
 
         //--------------------------------
-        // 번호
+        // Number
         //--------------------------------
 
         QLabel *num =
@@ -151,7 +151,7 @@ void NewsPanel::onNewsReply(
         );
 
         //--------------------------------
-        // 텍스트
+        // Text
         //--------------------------------
 
         QVBoxLayout *textLayout =
@@ -195,7 +195,7 @@ void NewsPanel::onNewsReply(
         textLayout->addWidget(descLabel);
 
         //--------------------------------
-        // 배치
+        // Layout
         //--------------------------------
 
         cardLayout->addWidget(num);

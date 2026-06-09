@@ -22,7 +22,7 @@ MainWindow::MainWindow(QWidget *parent)
     isPaused = false;
     waitingData = true;
 
-    // ── TCP 9000 Worker & Thread ──────────────────
+    // -- TCP 9000 Worker & Thread ------------------
     m_tcpThread = new QThread(this);
     m_tcpWorker = new TcpSocketWorker();
     m_tcpWorker->moveToThread(m_tcpThread);
@@ -36,7 +36,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_tcpThread->start();
 
-    // ── TCP 9001 Gesture Worker & Thread ───────────
+    // -- TCP 9001 Gesture Worker & Thread -----------
     m_gestureThread = new QThread(this);
     m_gestureWorker = new GestureSocketWorker();
     m_gestureWorker->moveToThread(m_gestureThread);
@@ -50,7 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_gestureThread->start();
 
-    // ── Emotion Process Worker & Thread ────────────
+    // -- Emotion Process Worker & Thread ------------
     m_emotionThread = new QThread(this);
     m_emotionWorker = new EmotionProcessWorker();
     m_emotionWorker->moveToThread(m_emotionThread);
@@ -62,7 +62,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_emotionThread->start();
 
-    // ── Music Player Worker & Thread ───────────────
+    // -- Music Player Worker & Thread ---------------
     m_musicThread = new QThread(this);
     m_musicWorker = new MusicPlayerWorker();
     m_musicWorker->moveToThread(m_musicThread);
@@ -86,13 +86,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_musicThread->start();
 
-    // ── 시계 타이머 ────────────────────────────────
+    // -- Clock timer --------------------------------
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTime);
     timer->start(1000);
     updateTime();
 
-    // ── 전체 스타일 ────────────────────────────────
+    // -- Global style -------------------------------
     this->setStyleSheet("background-color:black;");
 
     ui->dateLabel->setStyleSheet(
@@ -119,7 +119,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lcdNumberTemp->setStyleSheet("background:#151515; border-radius:8px;");
     ui->lcdNumberHumi->setStyleSheet("background:#151515; border-radius:8px;");
 
-    // ── Weather panel ─────────────────────────────
+    // -- Weather panel -----------------------------
     WeatherWidget = new WeatherPanel(ui->centralWidget);
     WeatherWidget->setGeometry(900, 1200, 1023, 500);
     WeatherWidget->hide();
@@ -132,12 +132,12 @@ MainWindow::MainWindow(QWidget *parent)
             WeatherWidget->show();
         });
 
-    // ── MusicBar ─────────────────────────────────
+    // -- MusicBar ---------------------------------
     musicBar = new MusicBar(ui->centralWidget);
     musicBar->setGeometry(960, 380, 920, 150);
     musicBar->show();
 
-    // ── UI 배치 ──────────────────────────────────
+    // -- UI layout ----------------------------------
     ui->dateLabel->move(1500, 24);
     ui->timeLabel->move(1440, 48);
     ui->lcdNumberTemp->move(1320, 175);
@@ -154,7 +154,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->label_2->resize(100, 46);
     ui->labelAQI->resize(200, 36);
 
-    // ── NewsPanel ────────────────────────────────
+    // -- NewsPanel --------------------------------
     newsWidget = new NewsPanel(ui->centralWidget);
     newsWidget->setGeometry(1920, 520, 760, 620);
     newsWidget->hide();
@@ -180,16 +180,16 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-// ── Arduino 데이터 수신 (메인 스레드에서 처리) ──
+// -- Arduino data received (main thread) ----------
 void MainWindow::onArduinoDataReceived(const QString &data)
 {
     processData(data);
 }
 
-// ── Gesture 데이터 수신 (메인 스레드에서 처리) ──
+// -- Gesture data received (main thread) ----------
 void MainWindow::onGestureDataReceived(const QString &gesture)
 {
-    qDebug() << "[제스처 검증 완료] 진입 명령어:" << gesture;
+    qDebug() << "[Gesture verified] Entry command:" << gesture;
 
     if (gesture.startsWith("KEYWORD"))
     {
@@ -206,7 +206,7 @@ void MainWindow::onGestureDataReceived(const QString &gesture)
 
         if (isPaused && m_musicWorker)
         {
-            qDebug() << "[START - Resume] 일시정지 상태 탈출: 멈춘 지점부터 다시 재생합니다.";
+            qDebug() << "[START - Resume] Exiting pause: resuming from where it stopped.";
             QMetaObject::invokeMethod(m_musicWorker, "resume", Qt::QueuedConnection);
             isPaused = false;
             musicBar->setPlaying(true);
@@ -220,7 +220,7 @@ void MainWindow::onGestureDataReceived(const QString &gesture)
     {
         if (m_musicWorker)
         {
-            qDebug() << "[STOP] 제스처 감지: 음악 일시정지 명령";
+            qDebug() << "[STOP] Gesture detected: music pause command";
             QMetaObject::invokeMethod(m_musicWorker, "pause", Qt::QueuedConnection);
             isPaused = true;
             musicBar->setPlaying(false);
@@ -230,7 +230,7 @@ void MainWindow::onGestureDataReceived(const QString &gesture)
     {
         if (m_musicWorker)
         {
-            qDebug() << "[END] 제스처 감지: 모든 오디오 재생 프로세스를 완전 종료합니다.";
+            qDebug() << "[END] Gesture detected: fully terminate all audio playback processes.";
             QMetaObject::invokeMethod(m_musicWorker, "stop", Qt::QueuedConnection);
             isPaused = false;
             musicBar->setPlaying(false);
@@ -241,12 +241,12 @@ void MainWindow::onGestureDataReceived(const QString &gesture)
     }
     else if (gesture == "LEFT")
     {
-        qDebug() << "[LEFT] 뉴스 패널";
+        qDebug() << "[LEFT] News panel";
         showNewsPanel();
     }
     else if (gesture == "RIGHT")
     {
-        qDebug() << "[RIGHT] 날씨 패널";
+        qDebug() << "[RIGHT] Weather panel";
         showWeatherPanel();
     }
     else if (gesture == "VOLUME_UP")
@@ -259,7 +259,7 @@ void MainWindow::onGestureDataReceived(const QString &gesture)
     }
 }
 
-// ── Music Worker 콜백 ────────────────────────────
+// -- Music Worker callbacks -----------------------
 void MainWindow::onTrackInfoReady(const QString &title, int durationSeconds)
 {
     musicBar->setTrackTitle(title);
@@ -281,13 +281,13 @@ void MainWindow::onPlaybackStopped()
     musicBar->setPlaying(false);
 }
 
-// ── 음악 검색 시작 ──────────────────────────────
+// -- Start music search ---------------------------
 void MainWindow::startMusicSearch()
 {
-    qDebug() << "[START - New] 최초 재생 감지: mpv 스트리밍을 구동합니다.";
+    qDebug() << "[START - New] First playback detected: launching mpv streaming.";
 
     if (keyword.isEmpty())
-        keyword = "잔잔한";
+        keyword = "calm";
 
     QMetaObject::invokeMethod(m_musicWorker, "searchAndPlay", Qt::QueuedConnection,
                               Q_ARG(QString, keyword));
@@ -295,7 +295,7 @@ void MainWindow::startMusicSearch()
     isPaused = false;
 }
 
-// ── 밝기 오버레이 적용 ──────────────────────────
+// -- Apply brightness overlay ---------------------
 void MainWindow::applyBrightness(int briVal)
 {
     int brightness = qBound(80, (briVal * 255) / 550, 255);
@@ -327,7 +327,7 @@ void MainWindow::applyBrightness(int briVal)
     newsWidget->setTextBrightness(brightness);
 }
 
-// ── 데이터 파싱 및 UI 업데이트 (메인 스레드) ────
+// -- Data parsing and UI update (main thread) -----
 void MainWindow::processData(const QString &data)
 {
     if (data == "OFF")
@@ -374,12 +374,12 @@ void MainWindow::processData(const QString &data)
         QString emoji;
         switch (aqiVal)
         {
-        case 1: emoji = "좋음"; break;
-        case 2: emoji = "보통"; break;
-        case 3: emoji = "나쁨"; break;
-        case 4: emoji = "위험"; break;
-        case 5: emoji = "죽음"; break;
-        default: emoji = "오류"; break;
+        case 1: emoji = "Good"; break;
+        case 2: emoji = "Moderate"; break;
+        case 3: emoji = "Bad"; break;
+        case 4: emoji = "Hazardous"; break;
+        case 5: emoji = "Deadly"; break;
+        default: emoji = "Error"; break;
         }
         ui->labelAQI->setText(emoji);
 
@@ -396,23 +396,23 @@ void MainWindow::processData(const QString &data)
     }
 }
 
-// ── 시계 업데이트 ───────────────────────────────
+// -- Clock update ---------------------------------
 void MainWindow::updateTime()
 {
     QDateTime current = QDateTime::currentDateTime();
     QLocale koLocale(QLocale::Korean, QLocale::SouthKorea);
 
-    ui->dateLabel->setText(koLocale.toString(current, "M월 d일 dddd"));
+    ui->dateLabel->setText(koLocale.toString(current, "MMM d dddd"));
     ui->timeLabel->setText(current.toString("h:mm"));
 }
 
-// ── 창 크기 변경 ────────────────────────────────
+// -- Window resize --------------------------------
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
 }
 
-// ── Weather Panel 보이기 ──────────────────────────
+// -- Show Weather Panel ---------------------------
 void MainWindow::showWeatherPanel()
 {
     if (animationRunning)
@@ -447,7 +447,7 @@ void MainWindow::showWeatherPanel()
     });
 }
 
-// ── News Panel 보이기 ──────────────────────────
+// -- Show News Panel ------------------------------
 void MainWindow::showNewsPanel()
 {
     if (animationRunning)
