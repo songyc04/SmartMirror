@@ -20,6 +20,7 @@ MainWindow::MainWindow(QWidget *parent)
     this->resize(1920, 1080);
 
     isPaused = false;
+    waitingData = true;
 
     // ── TCP 9000 Worker & Thread ──────────────────
     m_tcpThread = new QThread(this);
