@@ -9,6 +9,7 @@
 #include <QResizeEvent>
 #include <QGraphicsOpacityEffect>
 #include <QProcessEnvironment>
+#include <QProcess>
 #include <QString>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -117,13 +118,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lcdNumberTemp->setStyleSheet("background:#151515; border-radius:8px;");
     ui->lcdNumberHumi->setStyleSheet("background:#151515; border-radius:8px;");
 
-    // ── 화면 ON/OFF 오버레이 ──────────────────────
-    blackOverlay = new QFrame(ui->centralWidget);
-    blackOverlay->setGeometry(ui->centralWidget->rect());
-    blackOverlay->setStyleSheet("background-color:black;");
-    blackOverlay->raise();
-    blackOverlay->show();
-
     // ── Weather panel ─────────────────────────────
     WeatherWidget = new WeatherPanel(ui->centralWidget);
     WeatherWidget->setGeometry(900, 1200, 1023, 500);
@@ -135,14 +129,12 @@ MainWindow::MainWindow(QWidget *parent)
         {
             WeatherWidget->move(900, 550);
             WeatherWidget->show();
-            blackOverlay->raise();
         });
 
     // ── MusicBar ─────────────────────────────────
     musicBar = new MusicBar(ui->centralWidget);
     musicBar->setGeometry(960, 380, 920, 150);
     musicBar->show();
-    musicBar->stackUnder(blackOverlay);
 
     // ── UI 배치 ──────────────────────────────────
     ui->dateLabel->move(1500, 24);
@@ -339,8 +331,7 @@ void MainWindow::processData(const QString &data)
 {
     if (data == "OFF")
     {
-        blackOverlay->show();
-        blackOverlay->raise();
+        QProcess::execute("xset", QStringList() << "dpms" << "force" << "off");
         waitingData = false;
 
         QMetaObject::invokeMethod(m_emotionWorker, "stopProcess", Qt::QueuedConnection);
@@ -398,7 +389,7 @@ void MainWindow::processData(const QString &data)
 
         if (waitingData)
         {
-            blackOverlay->hide();
+            QProcess::execute("xset", QStringList() << "dpms" << "force" << "on");
             waitingData = false;
         }
     }
@@ -418,8 +409,6 @@ void MainWindow::updateTime()
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
-    if (blackOverlay)
-        blackOverlay->setGeometry(ui->centralWidget->rect());
 }
 
 // ── Weather Panel 보이기 ──────────────────────────

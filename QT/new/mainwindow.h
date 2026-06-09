@@ -41,7 +41,6 @@ private slots:
 private:
     Ui::MainWindow *ui;
     QTimer         *timer;
-    QFrame         *blackOverlay;
     WeatherPanel   *WeatherWidget;
     NewsPanel      *newsWidget;
     MusicBar       *musicBar;
