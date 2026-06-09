@@ -79,6 +79,17 @@ void MusicBar::setPlaying(bool playing)
     }
 }
 
+void MusicBar::resetPlay(){
+    setPlaying(false);
+    mCurrentSec=0;
+    mTotalSec=0;
+    ui->progressSlider->setMaximum(0);
+    ui->progressSlider->setValue(0);
+    ui->lblTrackTitle->setText("NO MUSIC");
+    ui->lblCurrentTime->setText("0:00");
+    ui->lblTotalTime->setText("0:00");
+}
+
 // -- 슬롯 -------------------------------------------
 void MusicBar::onPlayClicked()
 {

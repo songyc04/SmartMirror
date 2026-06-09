@@ -233,10 +233,7 @@ void MainWindow::onGestureDataReceived(const QString &gesture)
             qDebug() << "[END] 제스처 감지: 모든 오디오 재생 완전 종료.";
             QMetaObject::invokeMethod(m_musicWorker, "stop", Qt::QueuedConnection);
             isPaused = false;
-            musicBar->setPlaying(false);
-            musicBar->setTrackTitle("");
-            musicBar->setCurrentSeconds(0);
-            musicBar->onTimerTick();
+            musicBar->resetPlay();
         }
     }
     else if (gesture == "LEFT")

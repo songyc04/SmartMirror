@@ -25,6 +25,7 @@ public:
     // 재생 제어
     void setPlaying(bool playing);
     bool isPlaying() const { return mIsPlaying; }
+    void resetPlay();
 
     void onTimerTick();
 

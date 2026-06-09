@@ -1,6 +1,8 @@
 #include "newspanel.h"
 #include "ui_newspanel.h"
 
+
+
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
