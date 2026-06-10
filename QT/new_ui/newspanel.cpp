@@ -57,7 +57,7 @@ void NewsPanel::requestNews()
 {
     QString url =
         "https://openapi.naver.com/v1/search/news.json"
-        "?query=breaking"
+        "?query=뉴스"
         "&display=3"
         "&sort=date";
 

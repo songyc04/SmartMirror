@@ -119,7 +119,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // -- 뉴스 패널 --------------------------------
     newsWidget = new NewsPanel(ui->centralWidget);
-    newsWidget->setGeometry(1920, 520, 900, 560);
+    newsWidget->setGeometry(960, 1200, 900, 560);
     newsWidget->hide();
 }
 
@@ -388,9 +388,9 @@ void MainWindow::showWeatherPanel()
 
     WeatherWidget->show();
 
-    // 뉴스 패널: 현재 위치에서 화면 오른쪽 밖으로 이동
+    // 뉴스 패널: 현재 위치에서 화면 아래로 이동
     QPoint newsCurrentPos = newsWidget->pos();
-    QPoint newsTargetPos(1920 + currentOffsetX, 500);
+    QPoint newsTargetPos(960 + currentOffsetX, 1200);
 
     // 날씨 패널: 화면 아래에서 제자리로 이동
     QPoint weatherCurrentPos(960 + currentOffsetX, 1200);
@@ -438,8 +438,8 @@ void MainWindow::showNewsPanel()
     QPoint weatherCurrentPos = WeatherWidget->pos();
     QPoint weatherTargetPos(960 + currentOffsetX, 1200);
 
-    // 뉴스 패널: 화면 오른쪽 밖에서 제자리로 이동
-    QPoint newsCurrentPos(1920 + currentOffsetX, 500);
+    // 뉴스 패널: 화면 아래에서 제자리로 이동
+    QPoint newsCurrentPos(960 + currentOffsetX, 1200);
     QPoint newsTargetPos(960 + currentOffsetX, 500);
 
     // 시작 전에 뉴스 패널 위치를 시작 위치로 설정

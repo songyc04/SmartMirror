@@ -12,7 +12,7 @@ import sys
 import os
 
 # 서버 설정
-SERVER_IP = "192.168.0.22"
+SERVER_IP = "192.168.0.134"
 SERVER_PORT = 9000
 
 # 글로벌 상태 제어 변수
