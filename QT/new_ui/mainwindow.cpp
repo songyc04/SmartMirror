@@ -388,13 +388,16 @@ void MainWindow::showWeatherPanel()
 
     WeatherWidget->show();
 
-    // 현재 뉴스 패널 위치에서 화면 밖으로 이동
+    // 뉴스 패널: 현재 위치에서 화면 오른쪽 밖으로 이동
     QPoint newsCurrentPos = newsWidget->pos();
-    QPoint newsTargetPos(1920 + currentOffsetX, newsCurrentPos.y());
+    QPoint newsTargetPos(1920 + currentOffsetX, 500);
 
-    // 현재 날씨 패널 위치 (화면 밖)에서 제자리로 이동
-    QPoint weatherCurrentPos(WeatherWidget->x(), 1200);
-    QPoint weatherTargetPos = WeatherWidget->pos();
+    // 날씨 패널: 화면 아래에서 제자리로 이동
+    QPoint weatherCurrentPos(960 + currentOffsetX, 1200);
+    QPoint weatherTargetPos(960 + currentOffsetX, 500);
+
+    // 시작 전에 날씨 패널 위치를 시작 위치로 설정
+    WeatherWidget->move(weatherCurrentPos);
 
     QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
     newsAnim->setDuration(700);
@@ -431,13 +434,16 @@ void MainWindow::showNewsPanel()
 
     newsWidget->show();
 
-    // 현재 날씨 패널 위치에서 화면 밖으로 이동
+    // 날씨 패널: 현재 위치에서 화면 아래로 이동
     QPoint weatherCurrentPos = WeatherWidget->pos();
-    QPoint weatherTargetPos(weatherCurrentPos.x(), 1200);
+    QPoint weatherTargetPos(960 + currentOffsetX, 1200);
 
-    // 현재 뉴스 패널 위치 (화면 밖)에서 제자리로 이동
-    QPoint newsCurrentPos(1920 + currentOffsetX, newsWidget->y());
-    QPoint newsTargetPos = newsWidget->pos();
+    // 뉴스 패널: 화면 오른쪽 밖에서 제자리로 이동
+    QPoint newsCurrentPos(1920 + currentOffsetX, 500);
+    QPoint newsTargetPos(960 + currentOffsetX, 500);
+
+    // 시작 전에 뉴스 패널 위치를 시작 위치로 설정
+    newsWidget->move(newsCurrentPos);
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
