@@ -441,11 +441,8 @@ def main():
         with gesture_lock:
             latest_rgb_frame = rgb_frame
 
-        cv2.imshow("Camera", frame)
         if cv2.waitKey(10) & 0xFF == ord('q'):
             break
-
-    cv2.destroyAllWindows()
 
     gesture_running = False
     face_position_running = False
