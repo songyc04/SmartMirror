@@ -79,7 +79,7 @@ WeatherPanel::WeatherPanel(QWidget *parent)
 
     // -- 테이블 초기 설정 ---------------------
     ui->tableForecast->setRowCount(3);
-    ui->tableForecast->setColumnCount(7);
+    ui->tableForecast->setColumnCount(8);
     ui->tableForecast->verticalHeader()->setVisible(false);
     ui->tableForecast->setShowGrid(false);
     ui->tableForecast->setFrameShape(QFrame::NoFrame);
@@ -91,7 +91,7 @@ WeatherPanel::WeatherPanel(QWidget *parent)
 
     // 열 너비 - 첫 열(행 레이블)은 고정, 나머지는 균등 분할
     ui->tableForecast->setColumnWidth(0, 70);
-    for (int i = 1; i < 7; i++)
+    for (int i = 1; i < 8; i++)
     {
         ui->tableForecast->horizontalHeader()
             ->setSectionResizeMode(i, QHeaderView::Stretch);
@@ -485,12 +485,12 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
         }
     }
 
-    // 테이블 채우기: col 0=오늘, col 1~6=D+1~D+6
+    // 테이블 채우기: col 0=행레이블, col 1~7=D+0~D+6
     const QStringList weekNames = {"일","월","화","수","목","금","토"};
 
     for (int offset = 0; offset <= 6; offset++)
     {
-        int col = offset;
+        int col = 1 + offset;
 
         QDate targetDate = today.addDays(offset);
         QString dayName  = weekNames[targetDate.dayOfWeek() % 7];
@@ -556,7 +556,7 @@ void WeatherPanel::tryFillMidForecast()
 
     for (int offset = 4; offset <= 6; offset++)
     {
-        int col = offset;
+        int col = 1 + offset;
         if (col >= ui->tableForecast->columnCount())
             break;
 

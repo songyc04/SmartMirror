@@ -388,15 +388,23 @@ void MainWindow::showWeatherPanel()
 
     WeatherWidget->show();
 
+    // 현재 뉴스 패널 위치에서 화면 밖으로 이동
+    QPoint newsCurrentPos = newsWidget->pos();
+    QPoint newsTargetPos(1920, newsCurrentPos.y());
+
+    // 현재 날씨 패널 위치 (화면 밖)에서 제자리로 이동
+    QPoint weatherCurrentPos(WeatherWidget->x(), 1200);
+    QPoint weatherTargetPos = WeatherWidget->pos();
+
     QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
     newsAnim->setDuration(700);
-    newsAnim->setStartValue(newsWidget->pos());
-    newsAnim->sestEndValue(QPoint(1920, 520));
+    newsAnim->setStartValue(newsCurrentPos);
+    newsAnim->setEndValue(newsTargetPos);
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
-    weatherAnim->setStartValue(QPoint(960, 1200));
-    weatherAnim->setEndValue(QPoint(960, 500));
+    weatherAnim->setStartValue(weatherCurrentPos);
+    weatherAnim->setEndValue(weatherTargetPos);
 
     newsAnim->start(QAbstractAnimation::DeleteWhenStopped);
     weatherAnim->start(QAbstractAnimation::DeleteWhenStopped);
@@ -423,15 +431,23 @@ void MainWindow::showNewsPanel()
 
     newsWidget->show();
 
+    // 현재 날씨 패널 위치에서 화면 밖으로 이동
+    QPoint weatherCurrentPos = WeatherWidget->pos();
+    QPoint weatherTargetPos(weatherCurrentPos.x(), 1200);
+
+    // 현재 뉴스 패널 위치 (화면 밖)에서 제자리로 이동
+    QPoint newsCurrentPos(1920, newsWidget->y());
+    QPoint newsTargetPos = newsWidget->pos();
+
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
-    weatherAnim->setStartValue(QPoint(960, 500));
-    weatherAnim->setEndValue(QPoint(960, 1200));
+    weatherAnim->setStartValue(weatherCurrentPos);
+    weatherAnim->setEndValue(weatherTargetPos);
 
     QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
     newsAnim->setDuration(700);
-    newsAnim->setStartValue(QPoint(1920, 520));
-    newsAnim->setEndValue(QPoint(960, 500));
+    newsAnim->setStartValue(newsCurrentPos);
+    newsAnim->setEndValue(newsTargetPos);
 
     weatherAnim->start(QAbstractAnimation::DeleteWhenStopped);
     newsAnim->start(QAbstractAnimation::DeleteWhenStopped);

@@ -142,7 +142,7 @@ border-radius:12px;</string>
      <number>3</number>
     </property>
     <property name="columnCount">
-     <number>7</number>
+     <number>8</number>
     </property>
     <attribute name="verticalHeaderVisible">
      <bool>false</bool>
@@ -150,6 +150,7 @@ border-radius:12px;</string>
     <row/>
     <row/>
     <row/>
+    <column/>
     <column/>
     <column/>
     <column/>

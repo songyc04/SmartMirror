@@ -42,3 +42,6 @@ FORMS += \
     weatherpanel.ui \
     newspanel.ui \
     musicbar.ui
+
+RESOURCES += \
+    fonts.qrc
