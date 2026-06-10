@@ -10,7 +10,7 @@ MusicBar::MusicBar(QWidget *parent)
       ui(new Ui::MusicBar),
       mIsPlaying(false),
       mCurrentSec(0),
-      mTotalSec(672)
+      mTotalSec(0)
 {
     ui->setupUi(this);
 
