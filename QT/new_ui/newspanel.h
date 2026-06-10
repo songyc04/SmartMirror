@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QTimer>
 
 namespace Ui {
 class NewsPanel;
@@ -25,8 +26,10 @@ private:
     Ui::NewsPanel *ui;
 
     QNetworkAccessManager *manager;
+    QTimer *refreshTimer;
 
     void requestNews();
+    void clearNewsLayout();
 };
 
 #endif // NEWSPANEL_H

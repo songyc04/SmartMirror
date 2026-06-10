@@ -26,6 +26,11 @@ NewsPanel::NewsPanel(QWidget *parent)
             this,
             &NewsPanel::onNewsReply);
 
+    // 30초마다 뉴스 자동 신 타이머
+    refreshTimer = new QTimer(this);
+    connect(refreshTimer, &QTimer::timeout, this, &NewsPanel::requestNews);
+    refreshTimer->start(30000); // 30초
+
     //--------------------------------
     // 전역 타일
     //--------------------------------
@@ -58,7 +63,7 @@ void NewsPanel::requestNews()
     QString url =
         "https://openapi.naver.com/v1/search/news.json"
         "?query=뉴스"
-        "&display=3"
+        "&display=4"
         "&sort=date";
 
     QNetworkRequest request(url);
@@ -72,6 +77,21 @@ void NewsPanel::requestNews()
         "90QOjgV2bC");
 
     manager->get(request);
+}
+
+void NewsPanel::clearNewsLayout()
+{
+    QLayout *layout = ui->newsContainer->layout();
+    if (layout) {
+        QLayoutItem *item;
+        while ((item = layout->takeAt(0)) != nullptr) {
+            if (item->widget()) {
+                item->widget()->deleteLater();
+            }
+            delete item;
+        }
+        delete layout;
+    }
 }
 
 void NewsPanel::onNewsReply(
@@ -96,13 +116,15 @@ void NewsPanel::onNewsReply(
     // 뉴스 카드 생성
     //--------------------------------
 
+    clearNewsLayout();
+
     QVBoxLayout *mainLayout =
         new QVBoxLayout(ui->newsContainer);
 
     mainLayout->setSpacing(10);
 
     mainLayout->setContentsMargins(0,0,0,0);
-    int count = qMin(3, items.size());
+    int count = qMin(4, items.size());
     for(int i = 0; i < count; i++)
     {
         QJsonObject item =
