@@ -148,7 +148,7 @@ def voice_controller_thread():
                 # "~ 틀어줘", "~ 재생해줘" 문형 판별 및 정제
                 if any(keyword in command_text for keyword in ["틀어줘", "틀어 줘", "재생해줘", "들려줘", "찾아줘"]):
                     search_query = command_text
-                    for keyword in ["틀어줘", "틀어 줘", "재생해줘", "들려줘", "찾아줘"]:
+                    for keyword in ["틀어줘", "틀어 줘", "틀어", "재생해줘", "들려줘", "찾아줘"]:
                         search_query = search_query.replace(keyword, "")
                     search_query = search_query.strip()
 
