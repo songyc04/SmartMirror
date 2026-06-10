@@ -21,6 +21,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     isPaused = false;
     waitingData = true;
+    keyword = "애국가";
 
     // -- TCP 9000 워커 및 스레드 ------------------
     m_tcpThread = new QThread(this);
@@ -252,8 +253,8 @@ void MainWindow::startMusicSearch()
 {
     qDebug() << "[START - 신규] 첫 재생 감지: mpv 스트리밍 시작.";
 
-//    if (keyword.isEmpty())
-//        keyword = "calm";
+    if (keyword.isEmpty())
+        return;
 
     QMetaObject::invokeMethod(m_musicWorker, "searchAndPlay", Qt::QueuedConnection,
                               Q_ARG(QString, keyword));

@@ -60,10 +60,10 @@ def send_to_qt(message):
             qt_connected = False
             threading.Thread(target=connect_to_qt, daemon=True).start()
 
-# ── 제스처 쿨다운 및 타이머 설정 ──
+# ─ 제스처 쿨다운 및 타이머 설정 ──
 SWIPE_COOLDOWN = 1.5       
 VOLUME_COOLDOWN = 0.2      
-HOLD_REQUIRED_TIME = 1.5   
+HOLD_REQUIRED_TIME = 2.5   
 
 
 # ── 🎤 [음성 인식 기능] 오디오 디바이스 감지 및 인식 스레드 ──

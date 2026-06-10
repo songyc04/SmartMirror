@@ -32,7 +32,13 @@ void MusicPlayerWorker::searchAndPlay(const QString &keyword)
     if (!m_ytDlpProcess || !m_mpvProcess)
         return;
 
-    m_keyword = keyword.isEmpty() ? QString("애국가") : keyword;
+    if (keyword.isEmpty())
+    {
+        qDebug() << "keyword가 비어있어 노래 재생을 건너뜁니다.";
+        return;
+    }
+
+    m_keyword = keyword;
 
     if (m_ytDlpProcess->state() != QProcess::NotRunning)
     {

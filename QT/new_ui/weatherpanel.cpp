@@ -547,6 +547,9 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
         setCell(1, col, maxStr);
         setCell(2, col, minStr);
     }
+
+    // 단기 예보 처리 후 중기 예보 데이터가 있으면 함께 채움
+    tryFillMidForecast();
 }
 
 // ---------------------------------------------
