@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MusicBar</class>
+ <widget class="QWidget" name="MusicBar">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>900</width>
+      <height>200</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>700</width>
+      <height>180</height>
+     </size>
+    </property>
+   <property name="windowTitle">
+    <string>MusicBar</string>
+   </property>
+   <widget class="QLabel" name="lblMusicIcon">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>8</y>
+      <width>32</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>&#9835;</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QLabel" name="lblTrackTitle">
+    <property name="geometry">
+     <rect>
+      <x>48</x>
+      <y>10</y>
+      <width>770</width>
+      <height>28</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string></string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignLeft|Qt::AlignVCenter</set>
+    </property>
+   </widget>
+    <widget class="QLabel" name="lblBarsIcon">
+     <property name="geometry">
+      <rect>
+       <x>830</x>
+       <y>8</y>
+       <width>40</width>
+       <height>32</height>
+      </rect>
+     </property>
+    <property name="text">
+     <string>&#9610;&#9612;</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+    <widget class="QWidget" name="waveContainer" native="true">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>50</y>
+       <width>880</width>
+       <height>50</height>
+      </rect>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>50</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>50</height>
+      </size>
+     </property>
+    </widget>
+    <widget class="QLabel" name="lblCurrentTime">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>110</y>
+       <width>50</width>
+       <height>22</height>
+      </rect>
+     </property>
+    <property name="text">
+     <string>0:00</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+    </property>
+   </widget>
+    <widget class="QSlider" name="progressSlider">
+     <property name="geometry">
+      <rect>
+       <x>66</x>
+       <y>114</y>
+       <width>768</width>
+       <height>16</height>
+      </rect>
+     </property>
+    <property name="minimum">
+     <number>0</number>
+    </property>
+    <property name="maximum">
+     <number>672</number>
+    </property>
+    <property name="value">
+     <number>0</number>
+    </property>
+    <property name="orientation">
+     <enum>Qt::Horizontal</enum>
+    </property>
+    <property name="tickPosition">
+     <enum>QSlider::NoTicks</enum>
+    </property>
+   </widget>
+    <widget class="QLabel" name="lblTotalTime">
+     <property name="geometry">
+      <rect>
+       <x>840</x>
+       <y>110</y>
+       <width>50</width>
+       <height>22</height>
+      </rect>
+     </property>
+    <property name="text">
+     <string>0:00</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+    </property>
+   </widget>
+    <widget class="QToolButton" name="btnPrev">
+     <property name="geometry">
+      <rect>
+       <x>340</x>
+       <y>148</y>
+       <width>60</width>
+       <height>36</height>
+      </rect>
+     </property>
+    <property name="minimumSize">
+     <size>
+      <width>50</width>
+      <height>30</height>
+     </size>
+    </property>
+    <property name="text">
+     <string>&#9664;&#9664;</string>
+    </property>
+    </widget>
+    <widget class="QToolButton" name="btnPlay">
+     <property name="geometry">
+      <rect>
+       <x>410</x>
+       <y>142</y>
+       <width>80</width>
+       <height>48</height>
+      </rect>
+     </property>
+    <property name="minimumSize">
+     <size>
+      <width>60</width>
+      <height>40</height>
+     </size>
+    </property>
+    <property name="text">
+     <string>&#9654;</string>
+    </property>
+    </widget>
+    <widget class="QToolButton" name="btnNext">
+     <property name="geometry">
+      <rect>
+       <x>500</x>
+       <y>148</y>
+       <width>60</width>
+       <height>36</height>
+      </rect>
+     </property>
+    <property name="minimumSize">
+     <size>
+      <width>50</width>
+      <height>30</height>
+     </size>
+    </property>
+    <property name="text">
+     <string>&#9654;&#9654;</string>
+    </property>
+    </widget>
+   </widget>
+  <resources/>
+  <connections/>
+</ui>
