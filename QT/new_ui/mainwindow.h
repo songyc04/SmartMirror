@@ -72,6 +72,7 @@ private:
     bool animationRunning = false;
     QString keyword;
     int searchCount = 5;
+    int currentOffsetX = 0;
 };
 
 #endif // MAINWINDOW_H

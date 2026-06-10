@@ -89,15 +89,12 @@ WeatherPanel::WeatherPanel(QWidget *parent)
     ui->tableForecast->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     ui->tableForecast->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    // 열 너비 - 첫 열(행 레이블)은 고정, 나머지는 균등 분할
-    ui->tableForecast->setColumnWidth(0, 70);
-    for (int i = 1; i < 8; i++)
+    // 열 너비 - 모든 열 균등 분할
+    for (int i = 0; i < 8; i++)
     {
         ui->tableForecast->horizontalHeader()
             ->setSectionResizeMode(i, QHeaderView::Stretch);
     }
-    ui->tableForecast->horizontalHeader()
-        ->setSectionResizeMode(0, QHeaderView::Fixed);
 
     // Header
     ui->tableForecast->horizontalHeader()->setFixedHeight(30);
@@ -109,12 +106,20 @@ WeatherPanel::WeatherPanel(QWidget *parent)
         ui->tableForecast->setRowHeight(i, 40);
 
     // 행 라벨
-    ui->tableForecast->setItem(0, 0, new QTableWidgetItem("날씨"));
-    ui->tableForecast->setItem(1, 0, new QTableWidgetItem("최고"));
-    ui->tableForecast->setItem(2, 0, new QTableWidgetItem("최저"));
-    ui->tableForecast->item(0, 0)->setForeground(QColor(255, 255, 255));
-    ui->tableForecast->item(1, 0)->setForeground(QColor(220, 50, 50));
-    ui->tableForecast->item(2, 0)->setForeground(QColor(80, 160, 255));
+    QTableWidgetItem *weatherLabel = new QTableWidgetItem("날씨");
+    weatherLabel->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
+    weatherLabel->setForeground(QColor(255, 255, 255));
+    ui->tableForecast->setItem(0, 0, weatherLabel);
+
+    QTableWidgetItem *maxLabel = new QTableWidgetItem("최고");
+    maxLabel->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
+    maxLabel->setForeground(QColor(220, 50, 50));
+    ui->tableForecast->setItem(1, 0, maxLabel);
+
+    QTableWidgetItem *minLabel = new QTableWidgetItem("최저");
+    minLabel->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
+    minLabel->setForeground(QColor(80, 160, 255));
+    ui->tableForecast->setItem(2, 0, minLabel);
 
     QFont labelFont;
     labelFont.setPointSize(13);
@@ -131,7 +136,7 @@ WeatherPanel::WeatherPanel(QWidget *parent)
         "}"
         "QTableWidget::item {"
         "border:none;"
-        "padding:4px;"
+        "padding:2px;"
         "}");
 
     ui->tableForecast->horizontalHeader()->setStyleSheet(
@@ -141,7 +146,7 @@ WeatherPanel::WeatherPanel(QWidget *parent)
         "font-size:15px;"
         "font-weight:500;"
         "color:#ffffff;"
-        "padding:4px;"
+        "padding:2px;"
         "}");
 
     // -- 현재 날씨 라벨 스타일 -------------
@@ -532,6 +537,7 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
 
         auto setCell = [this](int row, int col, const QString &text) {
             QTableWidgetItem *it = new QTableWidgetItem(text);
+            it->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
             if (row == 0) it->setForeground(QColor(255, 255, 255));
             else if (row == 1) it->setForeground(QColor(220, 50, 50));
             else if (row == 2) it->setForeground(QColor(80, 160, 255));
@@ -585,6 +591,7 @@ void WeatherPanel::tryFillMidForecast()
 
         auto setCell = [this](int row, int col, const QString &text) {
             QTableWidgetItem *it = new QTableWidgetItem(text);
+            it->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
             if (row == 0)      it->setForeground(QColor(255, 255, 255));
             else if (row == 1) it->setForeground(QColor(220, 50, 50));
             else if (row == 2) it->setForeground(QColor(80, 160, 255));

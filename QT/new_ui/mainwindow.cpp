@@ -390,7 +390,7 @@ void MainWindow::showWeatherPanel()
 
     // 현재 뉴스 패널 위치에서 화면 밖으로 이동
     QPoint newsCurrentPos = newsWidget->pos();
-    QPoint newsTargetPos(1920, newsCurrentPos.y());
+    QPoint newsTargetPos(1920 + currentOffsetX, newsCurrentPos.y());
 
     // 현재 날씨 패널 위치 (화면 밖)에서 제자리로 이동
     QPoint weatherCurrentPos(WeatherWidget->x(), 1200);
@@ -436,7 +436,7 @@ void MainWindow::showNewsPanel()
     QPoint weatherTargetPos(weatherCurrentPos.x(), 1200);
 
     // 현재 뉴스 패널 위치 (화면 밖)에서 제자리로 이동
-    QPoint newsCurrentPos(1920, newsWidget->y());
+    QPoint newsCurrentPos(1920 + currentOffsetX, newsWidget->y());
     QPoint newsTargetPos = newsWidget->pos();
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
@@ -503,4 +503,5 @@ void MainWindow::relocateUI(const QString &userPos)
     WeatherWidget->move(960 + offsetX, 500);
 
     qDebug() << "[UI 재배치] 사용자 위치:" << userPos << ", X 오프셋:" << offsetX;
+    currentOffsetX = offsetX;
 }
