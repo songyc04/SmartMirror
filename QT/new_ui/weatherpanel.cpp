@@ -100,6 +100,7 @@ WeatherPanel::WeatherPanel(QWidget *parent)
     ui->tableForecast->horizontalHeader()->setFixedHeight(30);
     ui->tableForecast->horizontalHeader()
         ->setDefaultAlignment(Qt::AlignCenter | Qt::AlignVCenter);
+    ui->tableForecast->setHorizontalHeaderItem(0, new QTableWidgetItem(""));
 
     // 행 높이
     for (int i = 0; i < 3; i++)
@@ -132,7 +133,7 @@ WeatherPanel::WeatherPanel(QWidget *parent)
         "QTableWidget {"
         "background:transparent;"
         "border:none;"
-        "font-size:16px;"
+        "font-size:18px;"
         "}"
         "QTableWidget::item {"
         "border:none;"

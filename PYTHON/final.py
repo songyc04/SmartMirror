@@ -131,12 +131,16 @@ def voice_controller_thread():
 
                 print(f"\n🗣️ [호출 감지] '{text}' 수신 완료.", flush=True)
                 print(f"[활성화] 명령을 말씀하세요. ({COMMAND_TIMEOUT}초 내)", flush=True)
+                
+                # 마이크 UI 표시
+                send_to_qt("MIC:ON")
 
                 # 2단계: "~ 틀어줘" 음악 재생 검색어 대기
                 command_text = listen_once(r, source, timeout=COMMAND_TIMEOUT, phrase_limit=5)
 
                 if command_text is None:
                     print("[비활성화] 명령을 듣지 못했습니다.", flush=True)
+                    send_to_qt("MIC:OFF")
                     continue
 
                 print(f"[명령 수신] {command_text}", flush=True)
@@ -157,7 +161,7 @@ def voice_controller_thread():
                         # TCP 버퍼에서 패킷이 뭉쳐 파싱 에러가 나는 것을 방지하는 정밀 딜레이
                         time.sleep(0.15)
                         
-                        # 팩션 2: Qt의 gesture 변수에 "START" 상태를 트리거하여 음악을 실행
+                        # 팩션 2: Qt의 gesture 변수에 "START" 상태를 트리거하여 음악을 실
                         send_to_qt("START")
                     else:
                         print("[오류] 검색어가 비어있습니다.", flush=True)
@@ -166,9 +170,13 @@ def voice_controller_thread():
                     send_to_qt(f"KEYWORD:{command_text.strip()}")
                     time.sleep(0.15)
                     send_to_qt("START")
+                
+                # 마이크 UI 숨김
+                send_to_qt("MIC:OFF")
 
         except Exception as e:
             print(f"[음성 엔진 오류] {e}", flush=True)
+            send_to_qt("MIC:OFF")
             time.sleep(1)
 
 

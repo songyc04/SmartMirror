@@ -63,6 +63,8 @@ private:
     void showNewsPanel();
     void startMusicSearch();
     void relocateUI(const QString &userPos);
+    void showMicIndicator();
+    void hideMicIndicator();
 
     bool waitingData = false;
     bool isPaused = false;
