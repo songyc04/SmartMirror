@@ -152,7 +152,7 @@ WeatherPanel::WeatherPanel(QWidget *parent)
 
     // -- 현재 날씨 라벨 스타일 -------------
     ui->labelLocation->setStyleSheet(
-        "font-size:18px; font-weight:500; color:#C9A96E;"
+        "font-size:14px; font-weight:400; color:#999999;"
         "background:transparent; border:none;");
     ui->labelIcon->setStyleSheet(
         "font-size:48px; color:#ffffff; background:transparent; border:none;");
@@ -331,13 +331,13 @@ void WeatherPanel::onWeatherReply(QNetworkReply *reply)
     QString weatherText, icon;
     switch (pty)
     {
-    case 1: weatherText = "비";    icon = "R"; break;
-    case 2: weatherText = "비/눈"; icon = "RS"; break;
-    case 3: weatherText = "눈";    icon = "N";  break;
-    case 5: weatherText = "빗방울"; icon = "RD"; break;
-    case 6: weatherText = "비/눈"; icon = "RS"; break;
-    case 7: weatherText = "눈"; icon = "N"; break;
-    default: weatherText = "맑음";  icon = "S";  break;
+    case 1: weatherText = "비";    icon = "🌧️"; break;
+    case 2: weatherText = "비/눈"; icon = "🌨️"; break;
+    case 3: weatherText = "눈";    icon = "❄️";  break;
+    case 5: weatherText = "빗방울"; icon = "💧"; break;
+    case 6: weatherText = "비/눈"; icon = "🌨️"; break;
+    case 7: weatherText = "눈"; icon = "❄️"; break;
+    default: weatherText = "맑음";  icon = "☀️";  break;
     }
 
     ui->labelIcon->setText(icon);

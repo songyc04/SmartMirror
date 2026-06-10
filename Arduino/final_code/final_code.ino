@@ -69,7 +69,7 @@ void setup() {
 void loop() {
   getDistance();
 
-  bool targetState = (distance <= 15) ? 1 : 0;
+  bool targetState = (distance <= 30) ? 1 : 0;
 
   if (targetState != state && !isPending)
   {
@@ -137,7 +137,7 @@ void loop() {
     else Serial.println("System Off");
   }
   preState = state;
-  delay(1000);
+  delay(5000);
 }
 
 void getDistance() {

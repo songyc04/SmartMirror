@@ -288,9 +288,6 @@ void MainWindow::applyBrightness(int briVal)
     ui->dateLabel->setStyleSheet(
         QString("color:%1; font-size:13pt; font-weight:400; letter-spacing:1px; background:none;").arg(QString("rgb(%1,%1,%1)").arg(qMax(100, brightness - 60))));
 
-    ui->locationValue->setStyleSheet(
-        QString("color:%1; font-size:24pt; font-weight:300; background:none;").arg(color));
-
     ui->tempValue->setStyleSheet(
         QString("color:%1; font-size:24pt; font-weight:300; background:none;").arg(color));
 
@@ -503,23 +500,19 @@ void MainWindow::relocateUI(const QString &userPos)
     ui->timeLabel->move(960 + offsetX, 40);
     ui->dateLabel->move(965 + offsetX, 132);
     ui->separator1->move(1230 + offsetX, 48);
-    ui->locationIcon->move(1250 + offsetX, 52);
-    ui->locationValue->move(1300 + offsetX, 52);
-    ui->locationLabel->move(1300 + offsetX, 92);
+    ui->tempIcon->move(1250 + offsetX, 52);
+    ui->tempValue->move(1300 + offsetX, 52);
+    ui->tempUnit->move(1380 + offsetX, 60);
+    ui->tempLabel->move(1300 + offsetX, 92);
     ui->separator2->move(1420 + offsetX, 48);
-    ui->tempIcon->move(1440 + offsetX, 52);
-    ui->tempValue->move(1490 + offsetX, 52);
-    ui->tempUnit->move(1570 + offsetX, 60);
-    ui->tempLabel->move(1490 + offsetX, 92);
+    ui->humiIcon->move(1440 + offsetX, 52);
+    ui->humiValue->move(1490 + offsetX, 52);
+    ui->humiUnit->move(1560 + offsetX, 60);
+    ui->humiLabel->move(1490 + offsetX, 92);
     ui->separator3->move(1610 + offsetX, 48);
-    ui->humiIcon->move(1630 + offsetX, 52);
-    ui->humiValue->move(1680 + offsetX, 52);
-    ui->humiUnit->move(1750 + offsetX, 60);
-    ui->humiLabel->move(1680 + offsetX, 92);
-    ui->separator4->move(1780 + offsetX, 48);
-    ui->aqiIcon->move(1800 + offsetX, 52);
-    ui->aqiValue->move(1850 + offsetX, 52);
-    ui->aqiLabel->move(1850 + offsetX, 92);
+    ui->aqiIcon->move(1630 + offsetX, 52);
+    ui->aqiValue->move(1680 + offsetX, 52);
+    ui->aqiLabel->move(1680 + offsetX, 92);
     ui->headerSeparator->move(960 + offsetX, 175);
 
     // 음악 바 이동
