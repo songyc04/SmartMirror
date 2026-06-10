@@ -152,7 +152,7 @@ WeatherPanel::WeatherPanel(QWidget *parent)
 
     // -- 현재 날씨 라벨 스타일 -------------
     ui->labelLocation->setStyleSheet(
-        "font-size:16px; font-weight:500; color:#999999;"
+        "font-size:30px; font-weight:500; color:#999999;"
         "background:transparent; border:none;");
     ui->labelIcon->setStyleSheet(
         "font-size:48px; color:#ffffff; background:transparent; border:none;");
@@ -348,7 +348,7 @@ void WeatherPanel::onWeatherReply(QNetworkReply *reply)
         QString("습도 %1%   강수 %2mm   풍속 %3m/s")
             .arg(humidity).arg(rain).arg(wind));
     ui->labelLocation->setText(
-        "위치: " + currentRegion.name);
+        "🚩 " + currentRegion.name);
 
     reply->deleteLater();
 }
@@ -816,7 +816,7 @@ void WeatherPanel::setRegion(int regionCode)
     }
 
     ui->labelLocation->setText(
-        "위치: " + currentRegion.name);
+        "🚩 " + currentRegion.name);
 
     requestWeather();
     requestDailyForecast();
