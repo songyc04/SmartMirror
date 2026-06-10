@@ -32,7 +32,7 @@ void MusicPlayerWorker::searchAndPlay(const QString &keyword)
     if (!m_ytDlpProcess || !m_mpvProcess)
         return;
 
-    m_keyword = keyword.isEmpty() ? QString("calm") : keyword;
+    m_keyword = keyword.isEmpty() ? QString("애국가") : keyword;
 
     if (m_ytDlpProcess->state() != QProcess::NotRunning)
     {

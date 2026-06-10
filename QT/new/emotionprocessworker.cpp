@@ -43,7 +43,7 @@ void EmotionProcessWorker::startProcess()
     m_process->setProcessEnvironment(env);
 
     m_process->start("/home/jt-user/py310/bin/python",
-                     QStringList() << "gesture_sr.py");
+                     QStringList() << "gesture_sr_new.py");
 
     qDebug() << "Python 감정 분석 스크립트 시작.";
     emit processOutput("감정 분석 스크립트 시작됨");
