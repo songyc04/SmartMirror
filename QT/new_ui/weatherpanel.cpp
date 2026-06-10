@@ -152,7 +152,7 @@ WeatherPanel::WeatherPanel(QWidget *parent)
 
     // -- 현재 날씨 라벨 스타일 -------------
     ui->labelLocation->setStyleSheet(
-        "font-size:14px; font-weight:400; color:#999999;"
+        "font-size:16px; font-weight:500; color:#999999;"
         "background:transparent; border:none;");
     ui->labelIcon->setStyleSheet(
         "font-size:48px; color:#ffffff; background:transparent; border:none;");
