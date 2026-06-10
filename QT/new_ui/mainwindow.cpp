@@ -101,14 +101,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     // -- 날씨 패널 -----------------------------
     WeatherWidget = new WeatherPanel(ui->centralWidget);
-    WeatherWidget->setGeometry(900, 1200, 1023, 500);
+    WeatherWidget->setGeometry(960, 500, 900, 400);
     WeatherWidget->hide();
     QTimer::singleShot(
         1000,
         this,
         [=]()
         {
-            WeatherWidget->move(900, 550);
+            WeatherWidget->move(960, 500);
             WeatherWidget->show();
         });
 
@@ -395,8 +395,8 @@ void MainWindow::showWeatherPanel()
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
-    weatherAnim->setStartValue(QPoint(900, 1200));
-    weatherAnim->setEndValue(QPoint(900, 550));
+    weatherAnim->setStartValue(QPoint(960, 1200));
+    weatherAnim->setEndValue(QPoint(960, 500));
 
     newsAnim->start(QAbstractAnimation::DeleteWhenStopped);
     weatherAnim->start(QAbstractAnimation::DeleteWhenStopped);
@@ -425,8 +425,8 @@ void MainWindow::showNewsPanel()
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
-    weatherAnim->setStartValue(QPoint(900, 550));
-    weatherAnim->setEndValue(QPoint(900, 1200));
+    weatherAnim->setStartValue(QPoint(960, 500));
+    weatherAnim->setEndValue(QPoint(960, 1200));
 
     QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
     newsAnim->setDuration(700);
@@ -449,11 +449,11 @@ void MainWindow::relocateUI(const QString &userPos)
 
     if (userPos == "LEFT")
     {
-        offsetX = -900;
+        offsetX = 0;
     }
     else if (userPos == "RIGHT")
     {
-        offsetX = 0;
+        offsetX = -900;
     }
     else
     {
@@ -484,7 +484,7 @@ void MainWindow::relocateUI(const QString &userPos)
 
     // 뉴스/날씨 패널도 함께 이동
     newsWidget->move(960 + offsetX, 500);
-    WeatherWidget->move(900 + offsetX, 550);
+    WeatherWidget->move(960 + offsetX, 500);
 
     qDebug() << "[UI 재배치] 사용자 위치:" << userPos << ", X 오프셋:" << offsetX;
 }

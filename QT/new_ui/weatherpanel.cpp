@@ -70,18 +70,16 @@ WeatherPanel::WeatherPanel(QWidget *parent)
     // 지역 설정
     setRegion(1);
 
-    // -- 패널 스일 -----------------------------
+    // -- 패널 스타일 -----------------------------
     this->setStyleSheet(
         "QWidget {"
-        "background:rgba(13,13,13,230);"
-        "border:1px solid rgba(201,169,110,0.2);"
-        "border-radius:20px;"
+        "background:transparent;"
         "color:white;"
         "}");
 
     // -- 테이블 초기 설정 ---------------------
     ui->tableForecast->setRowCount(3);
-    ui->tableForecast->setColumnCount(8);
+    ui->tableForecast->setColumnCount(7);
     ui->tableForecast->verticalHeader()->setVisible(false);
     ui->tableForecast->setShowGrid(false);
     ui->tableForecast->setFrameShape(QFrame::NoFrame);
@@ -91,47 +89,45 @@ WeatherPanel::WeatherPanel(QWidget *parent)
     ui->tableForecast->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     ui->tableForecast->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    // 열 너비
-    ui->tableForecast->setColumnWidth(0, 80);
-    ui->tableForecast->horizontalHeader()
-        ->setSectionResizeMode(0, QHeaderView::Interactive);
-    for (int i = 1; i < 8; i++)
+    // 열 너비 - 첫 열(행 레이블)은 고정, 나머지는 균등 분할
+    ui->tableForecast->setColumnWidth(0, 70);
+    for (int i = 1; i < 7; i++)
     {
         ui->tableForecast->horizontalHeader()
             ->setSectionResizeMode(i, QHeaderView::Stretch);
     }
+    ui->tableForecast->horizontalHeader()
+        ->setSectionResizeMode(0, QHeaderView::Fixed);
 
     // Header
-    ui->tableForecast->horizontalHeader()->setFixedHeight(32);
+    ui->tableForecast->horizontalHeader()->setFixedHeight(30);
     ui->tableForecast->horizontalHeader()
-        ->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    ui->tableForecast->setHorizontalHeaderItem(
-        0, new QTableWidgetItem(""));
+        ->setDefaultAlignment(Qt::AlignCenter | Qt::AlignVCenter);
 
     // 행 높이
     for (int i = 0; i < 3; i++)
-        ui->tableForecast->setRowHeight(i, 36);
+        ui->tableForecast->setRowHeight(i, 40);
 
     // 행 라벨
     ui->tableForecast->setItem(0, 0, new QTableWidgetItem("날씨"));
     ui->tableForecast->setItem(1, 0, new QTableWidgetItem("최고"));
     ui->tableForecast->setItem(2, 0, new QTableWidgetItem("최저"));
     ui->tableForecast->item(0, 0)->setForeground(QColor(255, 255, 255));
-    ui->tableForecast->item(1, 0)->setForeground(QColor(255, 255, 255));
-    ui->tableForecast->item(2, 0)->setForeground(QColor(255, 255, 255));
+    ui->tableForecast->item(1, 0)->setForeground(QColor(220, 50, 50));
+    ui->tableForecast->item(2, 0)->setForeground(QColor(80, 160, 255));
 
-    QFont boldFont;
-    boldFont.setBold(true);
-    ui->tableForecast->item(0, 0)->setFont(boldFont);
-    ui->tableForecast->item(1, 0)->setFont(boldFont);
-    ui->tableForecast->item(2, 0)->setFont(boldFont);
+    QFont labelFont;
+    labelFont.setPointSize(13);
+    ui->tableForecast->item(0, 0)->setFont(labelFont);
+    ui->tableForecast->item(1, 0)->setFont(labelFont);
+    ui->tableForecast->item(2, 0)->setFont(labelFont);
 
     // -- 테이블 QSS -------------------------------
     ui->tableForecast->setStyleSheet(
         "QTableWidget {"
         "background:transparent;"
         "border:none;"
-        "font-size:20px;"
+        "font-size:16px;"
         "}"
         "QTableWidget::item {"
         "border:none;"
@@ -142,35 +138,32 @@ WeatherPanel::WeatherPanel(QWidget *parent)
         "QHeaderView::section {"
         "background:transparent;"
         "border:none;"
-        "font-size:18px;"
-        "font-weight:bold;"
-        "padding-top:4px;"
+        "font-size:15px;"
+        "font-weight:500;"
+        "color:#ffffff;"
+        "padding:4px;"
         "}");
 
-    // -- 현재 날씨 라벨 스일 -------------
+    // -- 현재 날씨 라벨 스타일 -------------
     ui->labelLocation->setStyleSheet(
-        "font-size:20px; font-weight:600; color:#C9A96E;"
+        "font-size:18px; font-weight:500; color:#C9A96E;"
         "background:transparent; border:none;");
     ui->labelIcon->setStyleSheet(
-        "font-size:68px; background:transparent; border:none;");
+        "font-size:48px; color:#ffffff; background:transparent; border:none;");
     ui->labelTemp->setStyleSheet(
-        "font-size:52px; font-weight:300; color:#ffffff;"
+        "font-size:42px; font-weight:300; color:#ffffff;"
         "background:transparent; border:none;");
     ui->labelWeather->setStyleSheet(
-        "font-size:26px; color:#cccccc; background:transparent; border:none;");
+        "font-size:22px; color:#ffffff; background:transparent; border:none;");
     ui->labelDetail->setStyleSheet(
-        "font-size:16px; color:#999999; background:transparent; border:none;");
+        "font-size:13px; color:#999999; background:transparent; border:none;");
 
     // -- 예보 카드 그림자 --------------------
-    ui->forecastCard->setStyleSheet(
-        "background:rgba(201,169,110,0.04);"
-        "border-radius:18px; border:1px solid rgba(201,169,110,0.12);");
-
     QGraphicsDropShadowEffect *shadow =
         new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(25);
-    shadow->setOffset(0, 5);
-    shadow->setColor(QColor(0, 0, 0, 80));
+    shadow->setBlurRadius(15);
+    shadow->setOffset(0, 3);
+    shadow->setColor(QColor(0, 0, 0, 100));
     ui->forecastCard->setGraphicsEffect(shadow);
 }
 
@@ -215,7 +208,6 @@ void WeatherPanel::requestWeather()
 void WeatherPanel::requestMidLand()
 {
     QString tmFc = QDate::currentDate().toString("yyyyMMdd") + "0600";
-    //tmFc += (QTime::currentTime().hour() >= 18) ? "1800" : "0600";
 
     QString url =
         QString(
@@ -237,7 +229,6 @@ void WeatherPanel::requestMidLand()
 void WeatherPanel::requestMidTemp()
 {
     QString tmFc = QDate::currentDate().toString("yyyyMMdd") + "0600";
-    //tmFc += (QTime::currentTime().hour() >= 18) ? "1800" : "0600";
 
     QString url =
         QString(
@@ -255,7 +246,6 @@ void WeatherPanel::requestMidTemp()
 
 // ---------------------------------------------
 // 단기 예보 요청 (D+1 ~ D+3)
-// regId=11B10101 (서울)
 // ---------------------------------------------
 void WeatherPanel::requestShortTerm()
 {
@@ -318,7 +308,6 @@ void WeatherPanel::onWeatherReply(QNetworkReply *reply)
     double rain     = 0;
     double wind     = 0;
     int    pty      = 0;
-    int    rn1      = 0;
 
     for (const QJsonValue &v : itemArray)
     {
@@ -347,7 +336,7 @@ void WeatherPanel::onWeatherReply(QNetworkReply *reply)
 
     ui->labelIcon->setText(icon);
     ui->labelTemp->setText(
-        QString::number(temp, 'f', 1) + "C");
+        QString::number(temp, 'f', 1) + "°C");
     ui->labelWeather->setText(weatherText);
     ui->labelDetail->setText(
         QString("습도 %1%   강수 %2mm   풍속 %3m/s")
@@ -426,35 +415,18 @@ void WeatherPanel::onMidTempReply(QNetworkReply *reply)
 
 // ---------------------------------------------
 // 단기 예보 응답 처리
-//
-// CSV 컬럼 순서:
-//   REG_ID, TM_FC, TM_EF, MOD, NE, STN, C,
-//   MAN_ID, MAN_FC, W1, T, W2, TA, ST, SKY, PREP, WF
-//
-// 서울 regId = 11B10101
-// NE: 0=오늘_낮(현재), 1=오늘_밤, 2=내일_낮, 3=내일_밤,
-//     4=모레_낮, 5=모레_밤, 6=D+3_낮, 7=D+3_밤, 8=D+4_낮
-//
-// TM_EF를 사용하여 D+1~D+3 날짜 매핑
-// TA=기온, SKY=하늘코드(DB01/02/03/04)
 // ---------------------------------------------
 void WeatherPanel::onShortTermReply(QNetworkReply *reply)
 {
-    // EUC-KR 인코딩, QTextCodec으로 디코딩
     QByteArray rawData = reply->readAll();
     reply->deleteLater();
 
-    // EUC-KR → UTF-8 변환
     QTextCodec *codec = QTextCodec::codecForName("EUC-KR");
     QString text = codec ? codec->toUnicode(rawData) : QString::fromUtf8(rawData);
 
-
-    // 서울 지역 코드
     const QString targetRegId =
         currentRegion.shortTermRegId;
 
-    // 오프셋별 일 최고/최저 기온 및 SKY 코드 저장
-    // 키: offset(1=내일, 2=모레, 3=D+3)
     struct DayData {
         int    maxTemp  = -999;
         int    minTemp  = 999;
@@ -471,7 +443,6 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
         if (trimmed.isEmpty() || trimmed.startsWith('#'))
             continue;
 
-        // 끝의 '=' 제거
         if (trimmed.endsWith(',') || trimmed.endsWith('='))
             trimmed.chop(1);
 
@@ -483,23 +454,22 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
         if (regId != targetRegId)
             continue;
 
-        // TM_EF: yyyyMMddHHmm
         QString tmEf = cols[2].trimmed();
         if (tmEf.length() < 8)
             continue;
 
-        QString dateStr = tmEf.left(8);      // yyyyMMdd
-        QString hourStr = tmEf.mid(8, 2);    // HH
+        QString dateStr = tmEf.left(8);
+        QString hourStr = tmEf.mid(8, 2);
 
         QDate   targetDate = QDate::fromString(dateStr, "yyyyMMdd");
         int     hour       = hourStr.toInt();
-        int     offset     = today.daysTo(targetDate); // 0=today, 1=tomorrow, ...
+        int     offset     = today.daysTo(targetDate);
 
-        if (offset < 0 || offset > 3)
-            continue;  // D+0 ~ D+3만 처리
+        if (offset < 0 || offset > 6)
+            continue;
 
-        QString skyCode = cols[14].trimmed(); // SKY
-        int     ta      = cols[12].trimmed().toInt(); // TA
+        QString skyCode = cols[14].trimmed();
+        int     ta      = cols[12].trimmed().toInt();
 
         DayData &dd = dayMap[offset];
 
@@ -515,26 +485,24 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
         }
     }
 
-    // -- 테이블 col 1~3 채우기 (D+1=col2, D+2=col3, D+3=col4) --
-    // col 1 = 오늘, col 2 = 내일(offset1), col 3 = 모레(offset2), col 4 = D+3(offset3)
+    // 테이블 채우기: col 0=오늘, col 1~6=D+1~D+6
     const QStringList weekNames = {"일","월","화","수","목","금","토"};
 
-    for (int offset = 0; offset <= 3; offset++)
+    for (int offset = 0; offset <= 6; offset++)
     {
-        int col =1+offset; // col1=today, col2, col3, col4
+        int col = offset;
 
         QDate targetDate = today.addDays(offset);
         QString dayName  = weekNames[targetDate.dayOfWeek() % 7];
 
-        // 헤더 요일명
         ui->tableForecast->setHorizontalHeaderItem(
-            col, new QTableWidgetItem("  " + dayName));
+            col, new QTableWidgetItem(dayName));
 
         if (!dayMap.contains(offset))
         {
-            if (col != 0) { ui->tableForecast->setItem(0, col, new QTableWidgetItem("")); }
-            if (col != 0) { ui->tableForecast->setItem(1, col, new QTableWidgetItem("-")); }
-            if (col != 0) { ui->tableForecast->setItem(2, col, new QTableWidgetItem("-")); }
+            ui->tableForecast->setItem(0, col, new QTableWidgetItem(""));
+            ui->tableForecast->setItem(1, col, new QTableWidgetItem("-"));
+            ui->tableForecast->setItem(2, col, new QTableWidgetItem("-"));
             continue;
         }
 
@@ -545,20 +513,20 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
         QString minStr;
 
         if(offset == 0 && todayMaxTemp != -999){
-            maxStr=QString::number(todayMaxTemp)+"";
+            maxStr=QString::number(todayMaxTemp);
         }
         else{
-            maxStr=(dd.maxTemp != -999) ? QString::number(dd.maxTemp) + "" : "-";
+            maxStr=(dd.maxTemp != -999) ? QString::number(dd.maxTemp) : "-";
         }
         if(offset == 0 && todayMinTemp != -999)
         {
-            minStr = QString::number(todayMinTemp) + "";
+            minStr = QString::number(todayMinTemp);
         }
         else
         {
             minStr =
                 (dd.minTemp != 999)
-                ? QString::number(dd.minTemp) + ""
+                ? QString::number(dd.minTemp)
                 : "-";
         }
 
@@ -567,15 +535,11 @@ void WeatherPanel::onShortTermReply(QNetworkReply *reply)
             if (row == 0) it->setForeground(QColor(255, 255, 255));
             else if (row == 1) it->setForeground(QColor(220, 50, 50));
             else if (row == 2) it->setForeground(QColor(80, 160, 255));
-            if (col != 0) { ui->tableForecast->setItem(row, col, it); }
+            ui->tableForecast->setItem(row, col, it);
         };
         setCell(0, col, icon);
         setCell(1, col, maxStr);
         setCell(2, col, minStr);
-    }
-    for(int c = 0; c < ui->tableForecast->columnCount(); c++)
-    {
-        auto h = ui->tableForecast->horizontalHeaderItem(c);
     }
 }
 
@@ -590,11 +554,9 @@ void WeatherPanel::tryFillMidForecast()
     const QStringList weekNames = {"일","월","화","수","목","금","토"};
     QDate today = QDate::currentDate();
 
-    // 중기 예보는 D+4(offset=4) ~ D+10(offset=10) 제공
-    // col 1=오늘(D+0), col 2=D+1, ..., col 5=D+4, col 6=D+5, col 7=D+6
-    for (int offset = 4; offset <= 7; offset++)
+    for (int offset = 4; offset <= 6; offset++)
     {
-        int col = 1 + offset; // col 5~8 but table only goes to col 7, range check
+        int col = offset;
         if (col >= ui->tableForecast->columnCount())
             break;
 
@@ -602,15 +564,13 @@ void WeatherPanel::tryFillMidForecast()
         QString dayName = weekNames[target.dayOfWeek() % 7];
 
         ui->tableForecast->setHorizontalHeaderItem(
-            col, new QTableWidgetItem("  " + dayName));
+            col, new QTableWidgetItem(dayName));
 
-        // 키 이름: taMax4, taMax5 ... (패딩 없음)
         int maxTemp = midTempData[QString("taMax%1").arg(offset)].toInt();
         int minTemp = midTempData[QString("taMin%1").arg(offset)].toInt();
 
         QString wfAm = midLandData[QString("wf%1Am").arg(offset)].toString();
         QString wfPm = midLandData[QString("wf%1Pm").arg(offset)].toString();
-        // D+8 이상은 Am/Pm 없이 wf8, wf9... 사용
         if (wfAm.isEmpty())
             wfAm = midLandData[QString("wf%1").arg(offset)].toString();
         if (wfPm.isEmpty())
@@ -632,8 +592,8 @@ void WeatherPanel::tryFillMidForecast()
         };
 
         setCell(0, col, icon);
-        setCell(1, col, QString::number(maxTemp) + "");
-        setCell(2, col, QString::number(minTemp) + "");
+        setCell(1, col, QString::number(maxTemp));
+        setCell(2, col, QString::number(minTemp));
     }
 }
 
@@ -708,9 +668,7 @@ void WeatherPanel::setTextBrightness(int value)
     this->setStyleSheet(
         QString(
             "QWidget {"
-            "background:rgba(13,13,13,230);"
-            "border:1px solid rgba(201,169,110,0.2);"
-            "border-radius:20px;"
+            "background:transparent;"
             "color:%1;"
             "}").arg(color));
 
