@@ -71,10 +71,10 @@ void MusicBar::setPlaying(bool playing)
     mWave->setPlaying(mIsPlaying);
 
     if (mIsPlaying) {
-        ui->btnPlay->setText("\u25B6");
+        ui->btnPlay->setText("❚❚");
         mProgressTimer->start();
     } else {
-        ui->btnPlay->setText("\u25B6");
+        ui->btnPlay->setText("▷");
         mProgressTimer->stop();
     }
 }

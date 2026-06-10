@@ -15,12 +15,12 @@
 // ---------------------------------------------
 static QString weatherToIcon(const QString &text)
 {
-    if (text.contains("clear") || text.contains("sunny"))   return "S";
-    if (text.contains("cloud")) return "P";
-    if (text.contains("overcast"))   return "C";
-    if (text.contains("rain"))   return "R";
-    if (text.contains("snow"))   return "N";
-    return "C";
+    if (text.contains("맑"))   return "☀️";
+    if (text.contains("구름")) return "🌤";
+    if (text.contains("흐"))   return "☁️";
+    if (text.contains("비"))   return "🌧️";
+    if (text.contains("눈"))   return "❄️";
+    return "☁️";
 }
 
 // ---------------------------------------------
@@ -28,11 +28,11 @@ static QString weatherToIcon(const QString &text)
 // ---------------------------------------------
 static QString skyCodeToIcon(const QString &skyCode)
 {
-    if (skyCode == "DB01") return "S";   // 맑음
-    if (skyCode == "DB02") return "P";  // 구름 조금
-    if (skyCode == "DB03") return "P";  // 구름 많음
-    if (skyCode == "DB04") return "C";  // 흐림
-    return "C";
+    if (skyCode == "DB01") return "☀️";   // 맑음
+    if (skyCode == "DB02") return "🌤";  // 구름 조금
+    if (skyCode == "DB03") return "🌥️";  // 구름 많음
+    if (skyCode == "DB04") return "☁️";  // 흐림
+    return "☁️";
 }
 
 WeatherPanel::WeatherPanel(QWidget *parent)

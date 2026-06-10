@@ -252,8 +252,8 @@ void MainWindow::startMusicSearch()
 {
     qDebug() << "[START - 신규] 첫 재생 감지: mpv 스트리밍 시작.";
 
-    if (keyword.isEmpty())
-        keyword = "calm";
+//    if (keyword.isEmpty())
+//        keyword = "calm";
 
     QMetaObject::invokeMethod(m_musicWorker, "searchAndPlay", Qt::QueuedConnection,
                               Q_ARG(QString, keyword));
@@ -391,7 +391,7 @@ void MainWindow::showWeatherPanel()
     QPropertyAnimation *newsAnim = new QPropertyAnimation(newsWidget, "pos");
     newsAnim->setDuration(700);
     newsAnim->setStartValue(newsWidget->pos());
-    newsAnim->setEndValue(QPoint(1920, 520));
+    newsAnim->sestEndValue(QPoint(1920, 520));
 
     QPropertyAnimation *weatherAnim = new QPropertyAnimation(WeatherWidget, "pos");
     weatherAnim->setDuration(700);
