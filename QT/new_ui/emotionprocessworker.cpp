@@ -31,7 +31,7 @@ void EmotionProcessWorker::startProcess()
 
     if (m_process->state() != QProcess::NotRunning)
     {
-        qDebug() << "Python 감정 분석 스크립트가 이미 실행 중입니다.";
+        qDebug() << "Python 스크립트가 이미 실행 중입니다.";
         return;
     }
 
@@ -45,8 +45,8 @@ void EmotionProcessWorker::startProcess()
     m_process->start("/home/jt-user/py310/bin/python",
                      QStringList() << "final.py");
 
-    qDebug() << "Python 감정 분석 스크립트 시작.";
-    emit processOutput("감정 분석 스크립트 시작됨");
+    qDebug() << "Python 스크립트 시작.";
+    emit processOutput("Python 스크립트 시작됨");
 }
 
 void EmotionProcessWorker::stopProcess()
@@ -56,10 +56,10 @@ void EmotionProcessWorker::stopProcess()
 
     if (m_process->state() != QProcess::NotRunning)
     {
-        qDebug() << "Python 감정 분석 스크립트 완전 종료.";
+        qDebug() << "Python 스크립트 완전 종료.";
         m_process->kill();
         m_process->waitForFinished(1000);
-        emit processOutput("감정 분석 스크립트 중지됨");
+        emit processOutput("스크립트 중지됨");
     }
 }
 
