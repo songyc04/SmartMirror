@@ -137,7 +137,7 @@ void loop() {
     else Serial.println("System Off");
   }
   preState = state;
-  delay(5000);
+  delay(1000);
 }
 
 void getDistance() {
