@@ -252,8 +252,8 @@ void MusicPlayerWorker::volumeUp()
 {
     if (m_mpvProcess && m_mpvProcess->state() == QProcess::Running)
     {
-        qDebug() << "볼륨 5% 증가";
-        QProcess::execute("amixer", QStringList() << "-c0" << "set" << "Master" << "5%+");
+        qDebug() << "볼륨 10% 증가";
+        sendMpvIpcCommand("{\"command\":[\"multiply\",\"volume\",1.1]}");
     }
 }
 
@@ -261,8 +261,8 @@ void MusicPlayerWorker::volumeDown()
 {
     if (m_mpvProcess && m_mpvProcess->state() == QProcess::Running)
     {
-        qDebug() << "볼륨 5% 감소";
-        QProcess::execute("amixer", QStringList() << "-c0" << "set" << "Master" << "5%-");
+        qDebug() << "볼륨 10% 감소";
+        sendMpvIpcCommand("{\"command\":[\"multiply\",\"volume\",0.9]}");
     }
 }
 
