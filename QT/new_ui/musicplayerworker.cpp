@@ -182,6 +182,7 @@ void MusicPlayerWorker::startMpvWithUrl(const QString &url)
             << "--demuxer-max-bytes=50"
             << "--demuxer-readahead-secs=5"
             << "--cache=yes"
+            << "--cache-secs=3"
             << "--network-timeout=10"
             << url;
 
@@ -252,8 +253,7 @@ void MusicPlayerWorker::volumeUp()
     if (m_mpvProcess && m_mpvProcess->state() == QProcess::Running)
     {
         qDebug() << "볼륨 5% 증가";
-        QProcess::execute("pactl", QStringList() << "set-sink-volume" << "@DEFAULT_SINK@" << "+5%");
-
+        QProcess::execute("amixer", QStringList() << "-c0" << "set" << "Master" << "5%+");
     }
 }
 
@@ -262,7 +262,7 @@ void MusicPlayerWorker::volumeDown()
     if (m_mpvProcess && m_mpvProcess->state() == QProcess::Running)
     {
         qDebug() << "볼륨 5% 감소";
-        QProcess::execute("pactl", QStringList() << "set-sink-volume" << "@DEFAULT_SINK@" << "-5%");
+        QProcess::execute("amixer", QStringList() << "-c0" << "set" << "Master" << "5%-");
     }
 }
 

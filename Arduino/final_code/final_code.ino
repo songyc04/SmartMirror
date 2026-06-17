@@ -69,7 +69,7 @@ void setup() {
 void loop() {
   getDistance();
 
-  bool targetState = (distance <= 30) ? 1 : 0;
+  bool targetState = (distance <= 80) ? 1 : 0;
 
   if (targetState != state && !isPending)
   {
