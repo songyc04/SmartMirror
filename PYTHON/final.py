@@ -22,7 +22,7 @@ qt_connected = False
 # ── 음성 인식 설정 ──
 LANGUAGE        = "ko-KR"
 WAKE_WORD       = "거울아"
-COMMAND_TIMEOUT = 7  # Wake word 감지 후 명령 대기 시간 (초)
+COMMAND_TIMEOUT = 7
 
 # ── [통신] C++ Qt TCP 서버 자동 연결 및 유지 로직 ──
 def connect_to_qt():
@@ -146,7 +146,7 @@ def voice_controller_thread():
                 print(f"[명령 수신] {command_text}", flush=True)
 
                 # "~ 틀어줘", "~ 재생해줘" 문형 판별 및 정제
-                if any(keyword in command_text for keyword in ["틀어줘", "틀어 줘", "재생해줘", "들려줘", "찾아줘"]):
+                if any(keyword in command_text for keyword in ["틀어줘", "틀어 줘", "틀어", "재생해줘", "들려줘", "찾아줘"]):
                     search_query = command_text
                     for keyword in ["틀어줘", "틀어 줘", "틀어", "재생해줘", "들려줘", "찾아줘"]:
                         search_query = search_query.replace(keyword, "")
