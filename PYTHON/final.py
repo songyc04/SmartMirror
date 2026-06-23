@@ -21,7 +21,7 @@ qt_connected = False
 
 # ── 음성 인식 설정 ──
 LANGUAGE        = "ko-KR"
-WAKE_WORD       = "거울아"
+WAKE_WORD       = "에어릭스"
 COMMAND_TIMEOUT = 7
 
 # ── [통신] C++ Qt TCP 서버 자동 연결 및 유지 로직 ──
