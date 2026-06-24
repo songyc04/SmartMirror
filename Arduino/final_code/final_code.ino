@@ -24,7 +24,6 @@ unsigned long transitionStart = 0;  // Start time
 float humidity;                     // AHT21 - Humidity
 float temperature;                  // AHT21 - Temperature
 int aqi;                            // AHT21 - AQI
-int brightness = 0;                 // CDS - Brightness
 float cycletime;                    // HC-SR04 - Ultrasonic shoot time
 float distance;                     // HC-SR04 - distance to stuff
 bool isDiff = false;                // Temperature/Humidity/AQI compare to last value
@@ -168,13 +167,11 @@ void getAirCondition() {
   if (((int)tempTemperature == 255) || ((int)tempHumidity == 255) || ((int)tempHumidity == 100) || (tempAqi == 0))
   {
     isDiff = false;
-    return;
   }
   // 온습도/AQI가 모두 이전 값과 똑같다면 보낼 필요 없음
   else if ((tempTemperature == temperature) && (tempHumidity == humidity) && (tempAqi == aqi))
   {
     isDiff = false;
-    return;
   }
   // 온습도 값이 정상적이고, 온습도/AQI 중 하나라도 다르다면 값을 보냄
   else
