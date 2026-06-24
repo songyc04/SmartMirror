@@ -153,13 +153,13 @@ void getDistance() {
 }
 
 void getAirCondition() {
-  float tempTemperature = aht.readTemperature();
-  float tempHumidity = aht.readHumidity();
-
   while (isnan(tempTemperature) || isnan(tempHumidity))
   {
     Serial.println("Sensor ready to start...");
   }
+
+  float tempTemperature = aht.readTemperature();
+  float tempHumidity = aht.readHumidity();
 
   int tempAqi = ens160.getAQI();
 
